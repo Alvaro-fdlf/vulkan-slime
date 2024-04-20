@@ -34,6 +34,7 @@ typedef struct {
 	double posX, posY, dirX, dirY;
 } particle;
 particle particles[particleCount];
+uint32_t *tempBuf; // copying from frontBuf to backBuf is slower than from a usual tempBuf to backBuf (why?)
 
 unsigned long long getMicros();
 void draw(uint32_t *buf);
@@ -41,6 +42,7 @@ void genParticle(particle *p);
 
 int main(int argc, char *argv[]) {
 	getDumbBuffers(monitorIndex);
+	tempBuf = (uint32_t*) malloc(sizeof(uint32_t) * xSize * ySize);
 	srand(getMicros());
 	for (int i=0; i<particleCount; i++) {
 		genParticle(particles + i);
@@ -73,12 +75,12 @@ void genParticle(particle *p) {
 }
 
 void draw(uint32_t *buf) {
-	for (int i=0; i<xSize*ySize; i++) {
-		backBuf[i] = frontBuf[i];
-	}
 	for (int i=0; i<particleCount; i++) {
 		particles[i].posX += particles[i].dirX;
 		particles[i].posY += particles[i].dirY;
-		buf[pixel((int)particles[i].posX, (int)particles[i].posY)] = 0x00FFFFFF;
+		tempBuf[pixel((int)particles[i].posX, (int)particles[i].posY)] = 0x00FFFFFF;
+	}
+	for (int i=0; i<xSize*ySize; i++) {
+		buf[i] = tempBuf[i];
 	}
 }
