@@ -12,16 +12,16 @@
 #include "dumbBuffers.h"
 
 /*
- * CONSTANTS TO MODIFY BEHAVIOR AT COMPILE TIME GO HERE
+ * VARIABLES TO MODIFY BEHAVIOR AT COMPILE TIME GO HERE
  */
 const int monitorIndex = 0; // Maybe make it command line option later
-#define particleCount 100000
-const double particleSpeed = 1.0; // distance traveled per frame
-const double steerAmplitude = M_PI * 0.2; // Angle of field of vision of particle and how much it steers in one frame
-const int steerLength = 20; // How many steps away to look for pixels to steer towards
-const double maxRandRadianChange = M_PI * 0.08; // Maximum random change of angle (in radians) per frame on top of the steering
-const uint32_t particleColor = 0x00FFFFFF; // XRGB
-const uint8_t redFade = 0x1, greenFade = 0x1, blueFade = 0x1; // change these to get different effects
+#define particleCount 200000
+double particleSpeed = 3.0; // distance traveled per frame
+double steerAmplitude = M_PI * 0.16; // Angle of field of vision of particle and how much it steers in one frame
+int steerLength = 40; // How many steps away to look for pixels to steer towards
+double maxRandRadianChange = M_PI * 0.08; // Maximum random change of angle (in radians) per frame on top of the steering
+uint32_t particleColor = 0x0060FFE0; // XRGB
+uint8_t redFade = 0x1, greenFade = 0x3, blueFade = 0x1; // change these to get different effects
 /*
  *
  */
