@@ -75,11 +75,31 @@ void genParticle(particle *p) {
 }
 
 void draw(uint32_t *buf) {
+	// Move particles
 	for (int i=0; i<particleCount; i++) {
 		particles[i].posX += particles[i].dirX;
 		particles[i].posY += particles[i].dirY;
+		if (particles[i].posX < 0) {
+			particles[i].posX = abs(particles[i].posX);
+			particles[i].dirX *= -1;
+		}
+		if (particles[i].posX > xSize+1) {
+			particles[i].posX = xSize - abs(xSize - particles[i].posX);
+			particles[i].dirX *= -1;
+		}
+		if (particles[i].posY < 0) {
+			particles[i].posY = abs(particles[i].posY);
+			particles[i].dirY *= -1;
+		}
+		if (particles[i].posY > ySize+1) {
+			particles[i].posY = ySize - abs(ySize - particles[i].posY);
+			particles[i].dirY *= -1;
+		}
+
 		tempBuf[pixel((int)particles[i].posX, (int)particles[i].posY)] = 0x00FFFFFF;
 	}
+
+	// Copy final result
 	for (int i=0; i<xSize*ySize; i++) {
 		buf[i] = tempBuf[i];
 	}
