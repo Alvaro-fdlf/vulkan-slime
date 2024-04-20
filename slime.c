@@ -16,12 +16,16 @@
  */
 const int monitorIndex = 0; // Maybe make it command line option later
 #define particleCount 200000
-double particleSpeed = 3.0; // distance traveled per frame
+double particleSpeed = 5.0; // distance traveled per frame
 double steerAmplitude = M_PI * 0.16; // Angle of field of vision of particle and how much it steers in one frame
-int steerLength = 40; // How many steps away to look for pixels to steer towards
+int steerLength = 25; // How many steps away to look for pixels to steer towards
 double maxRandRadianChange = M_PI * 0.08; // Maximum random change of angle (in radians) per frame on top of the steering
 uint32_t particleColor = 0x0060FFE0; // XRGB
 uint8_t redFade = 0x1, greenFade = 0x3, blueFade = 0x1; // change these to get different effects
+const int8_t blurKernel[9] = {4, 2, 4, // can be not const, but blur is the bottleneck and it makes a bit of a difference
+				2, 1, 2,
+				4, 2, 4};
+int blurDivide = 25; // should be set to the sum of elements of blurkernel
 /*
  *
  */
@@ -102,8 +106,9 @@ void draw(uint32_t *buf) {
 	dc = (unsigned char*) (tempBuf2 + pixel(0, 1));
 	dr = (unsigned char*) (tempBuf2 + pixel(1, 1));
 	for (int i=0; i<3; i++) {
-		temp = cc[i]*(1+2+2+4) + cr[i]*(1+2) + dc[i]*(1+2) + dr[i];
-		target[i] = temp / 16;
+		temp = cc[i]*(blurKernel[0]+blurKernel[1]+blurKernel[3]+blurKernel[4]) +
+			cr[i]*(blurKernel[2]+blurKernel[5]) + dc[i]*(blurKernel[6]+blurKernel[7]) + dr[i]*blurKernel[8];
+		target[i] = temp / blurDivide;
 	}
 	target = (unsigned char*) (tempBuf1 + pixel(xSize-1, 0));
 	cl = (unsigned char*) (tempBuf2 + pixel(xSize-2, 0));
@@ -111,8 +116,9 @@ void draw(uint32_t *buf) {
 	dl = (unsigned char*) (tempBuf2 + pixel(xSize-2, 1));
 	dc = (unsigned char*) (tempBuf2 + pixel(xSize-1, 1));
 	for (int i=0; i<3; i++) {
-		temp = cc[i]*(1+2+2+4) + cl[i]*(1+2) + dc[i]*(1+2) + dl[i];
-		target[i] = temp / 16;
+		temp = cc[i]*(blurKernel[1]+blurKernel[2]+blurKernel[4]+blurKernel[5]) +
+			cl[i]*(blurKernel[0]+blurKernel[3]) + dc[i]*(blurKernel[7]+blurKernel[8]) + dl[i]*blurKernel[6];
+		target[i] = temp / blurDivide;
 	}
 	target = (unsigned char*) (tempBuf1 + pixel(0, ySize-1));
 	uc = (unsigned char*) (tempBuf2 + pixel(0, ySize-2));
@@ -120,8 +126,9 @@ void draw(uint32_t *buf) {
 	cc = (unsigned char*) (tempBuf2 + pixel(0, ySize-1));
 	cr = (unsigned char*) (tempBuf2 + pixel(1, ySize-1));
 	for (int i=0; i<3; i++) {
-		temp = cc[i]*(1+2+2+4) + uc[i]*(1+2) + cr[i]*(1+2) + ur[i];
-		target[i] = temp / 16;
+		temp = cc[i]*(blurKernel[3]+blurKernel[4]+blurKernel[6]+blurKernel[7]) +
+			uc[i]*(blurKernel[0]+blurKernel[1]) + cr[i]*(blurKernel[5]+blurKernel[8]) + ur[i]*blurKernel[2];
+		target[i] = temp / blurDivide;
 	}
 	target = (unsigned char*) (tempBuf1 + pixel(xSize-1, ySize-1));
 	ul = (unsigned char*) (tempBuf2 + pixel(xSize-2, ySize-2));
@@ -129,8 +136,9 @@ void draw(uint32_t *buf) {
 	cl = (unsigned char*) (tempBuf2 + pixel(xSize-2, ySize-1));
 	cc = (unsigned char*) (tempBuf2 + pixel(xSize-1, ySize-1));
 	for (int i=0; i<3; i++) {
-		temp = cc[i]*(1+2+2+4) + uc[i]*(1+2) + cl[i]*(1+2) + cc[i];
-		target[i] = temp / 16;
+		temp = cc[i]*(blurKernel[4]+blurKernel[5]+blurKernel[7]+blurKernel[8]) +
+			uc[i]*(blurKernel[1]+blurKernel[2]) + cl[i]*(blurKernel[3]+blurKernel[6]) + cc[i]*blurKernel[0];
+		target[i] = temp / blurDivide;
 	}
 
 	// edges
@@ -143,8 +151,9 @@ void draw(uint32_t *buf) {
 		dc = (unsigned char*) (tempBuf2 + pixel(x, 1));
 		dr = (unsigned char*) (tempBuf2 + pixel(x+1, 1));
 		for (int i=0; i<3; i++) {
-			temp = cc[i]*(2+4) + cl[i]*(1+2) + cr[i]*(1+2) + dl[i] + dc[0]*2 + dr[0];
-			target[i] = temp / 16;
+			temp = cc[i]*(blurKernel[1]+blurKernel[4]) + cl[i]*(blurKernel[0]+blurKernel[3]) +
+				cr[i]*(blurKernel[2]+blurKernel[5]) + dl[i]*blurKernel[6] + dc[i]*blurKernel[7] + dr[i]*blurKernel[8];
+			target[i] = temp / blurDivide;
 		}
 	}
 	for (int x=1; x<xSize-1; x++) { // down edge
@@ -156,8 +165,9 @@ void draw(uint32_t *buf) {
 		cc = (unsigned char*) (tempBuf2 + pixel(x, ySize-1));
 		cr = (unsigned char*) (tempBuf2 + pixel(x+1, ySize-1));
 		for (int i=0; i<3; i++) {
-			temp = cc[i]*(2+4) + cl[i]*(1+2) + cr[i]*(1+2) + ul[i] + uc[0]*2 + ur[0];
-			target[i] = temp / 16;
+			temp = cc[i]*(blurKernel[4]+blurKernel[7]) + cl[i]*(blurKernel[3]+blurKernel[6]) +
+				cr[i]*(blurKernel[5]+blurKernel[8]) + ul[i]*blurKernel[0] + uc[i]*blurKernel[1] + ur[i]*blurKernel[2];
+			target[i] = temp / blurDivide;
 		}
 	}
 	for (int y=1; y<ySize-1; y++) { // left edge
@@ -169,8 +179,9 @@ void draw(uint32_t *buf) {
 		dc = (unsigned char*) (tempBuf2 + pixel(0, y+1));
 		dr = (unsigned char*) (tempBuf2 + pixel(1, y+1));
 		for (int i=0; i<3; i++) {
-			temp = cc[i]*(2+4) + uc[i]*(1+2) + dc[i]*(1+2) + ur[i] + cr[0]*2 + dr[0];
-			target[i] = temp / 16;
+			temp = cc[i]*(blurKernel[3]+blurKernel[4]) + uc[i]*(blurKernel[0]+blurKernel[1]) +
+				dc[i]*(blurKernel[6]+blurKernel[7]) + ur[i]*blurKernel[2] + cr[i]*blurKernel[5] + dr[i]*blurKernel[8];
+			target[i] = temp / blurDivide;
 		}
 	}
 	for (int y=1; y<ySize-1; y++) { // right edge
@@ -182,8 +193,9 @@ void draw(uint32_t *buf) {
 		dl = (unsigned char*) (tempBuf2 + pixel(xSize-2, y+1));
 		dc = (unsigned char*) (tempBuf2 + pixel(xSize-1, y+1));
 		for (int i=0; i<3; i++) {
-			temp = cc[i]*(2+4) + uc[i]*(1+2) + dc[i]*(1+2) + ul[i] + cl[0]*2 + dl[0];
-			target[i] = temp / 16;
+			temp = cc[i]*(blurKernel[4]+blurKernel[5]) + uc[i]*(blurKernel[1]+blurKernel[2]) +
+				dc[i]*(blurKernel[7]+blurKernel[8]) + ul[i]*blurKernel[0] + cl[i]*blurKernel[3] + dl[i]*blurKernel[6];
+			target[i] = temp / blurDivide;
 		}
 	}
 
@@ -201,8 +213,10 @@ void draw(uint32_t *buf) {
 			dc = (unsigned char*) (tempBuf2 + pixel(x, y+1));
 			dr = (unsigned char*) (tempBuf2 + pixel(x+1, y+1));
 			for (int i=0; i<3; i++) {
-				temp = ul[i] + uc[i]*2 + ur[i] + cl[i]*2 + cc[i]*4 + cr[i]*2 + dl[i] + dc[i]*2 + dr[i];
-				target[i] = temp / 16;
+				temp = ul[i]*blurKernel[0] + uc[i]*blurKernel[1] + ur[i]*blurKernel[2] +
+					cl[i]*blurKernel[3] + cc[i]*blurKernel[4] + cr[i]*blurKernel[5] +
+					dl[i]*blurKernel[6] + dc[i]*blurKernel[7] + dr[i]*blurKernel[8];
+				target[i] = temp / blurDivide;
 			}
 		}
 	}
