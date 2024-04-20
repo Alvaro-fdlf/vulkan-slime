@@ -1,10 +1,3 @@
-/*
- * CONSTANTS TO MODIFY BEHAVIOR AT COMPILE TIME GO HERE
- */
-const int monitorIndex = 0; // Maybe make it command line option later
-#define particleCount 100
-const double particleSpeed = 1.0; // distance traveled per frame
-
 #include <stddef.h>
 #include <assert.h>
 #include <fcntl.h>
@@ -17,6 +10,15 @@ const double particleSpeed = 1.0; // distance traveled per frame
 #include <sys/ioctl.h>
 #include <math.h>
 #include "dumbBuffers.h"
+
+/*
+ * CONSTANTS TO MODIFY BEHAVIOR AT COMPILE TIME GO HERE
+ */
+const int monitorIndex = 0; // Maybe make it command line option later
+#define particleCount 100
+const double particleSpeed = 1.0; // distance traveled per frame
+const uint32_t particleColor = 0x00FFFFFF; // XRGB
+const uint8_t redFade = 0x1, greenFade = 0x1, blueFade = 0x1; // change these to get different effects
 
 #define pixel(x, y) ((y)*xSize + (x))
 #define min(x, y) ({ \
@@ -75,6 +77,17 @@ void genParticle(particle *p) {
 }
 
 void draw(uint32_t *buf) {
+	// Fade away trails
+	for (int i=0; i<xSize*ySize; i++) {
+		unsigned char *color = (unsigned char*) (tempBuf + i);
+		// blue
+		color[0] = max(0, color[0] - blueFade);
+		// green
+		color[1] = max(0, color[1] - greenFade);
+		// red
+		color[2] = max(0, color[2] - redFade);
+	}
+
 	// Move particles
 	for (int i=0; i<particleCount; i++) {
 		particles[i].posX += particles[i].dirX;
@@ -96,7 +109,7 @@ void draw(uint32_t *buf) {
 			particles[i].dirY *= -1;
 		}
 
-		tempBuf[pixel((int)particles[i].posX, (int)particles[i].posY)] = 0x00FFFFFF;
+		tempBuf[pixel((int)particles[i].posX, (int)particles[i].posY)] = particleColor;
 	}
 
 	// Copy final result
