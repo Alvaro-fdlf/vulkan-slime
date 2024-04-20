@@ -1,0 +1,2 @@
+This is my attempt at implementing something like Sebastian Lague's slime simulator https://www.youtube.com/watch?v=X-iSQQgOd1A
+It works on Linux. If X is active, it takes a DRM lease from X to get a crtc and connector to render to. If there's no DRM master it becomes the master. If something else is DRM master then it surely fails.
