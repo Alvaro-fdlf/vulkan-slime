@@ -93,9 +93,7 @@ void genParticle(particle *p) {
 	p->dirY = particleSpeed * sin(p->angle);
 }
 
-void draw(uint32_t *buf) {
-	swap(tempBuf1, tempBuf2);
-	// Blur trails
+void blur() {
 	// In edges and corners treat the out of bounds as if extended infinitely by the same value as the edge
 	unsigned char *target, *ul, *uc, *ur, *cl, *cc, *cr, *dl, *dc, *dr; // up left, up center, up right, etc
 	unsigned int temp;
@@ -220,8 +218,9 @@ void draw(uint32_t *buf) {
 			}
 		}
 	}
+}
 
-	// Fade away trails
+void fade() {
 	for (int i=0; i<xSize*ySize; i++) {
 		unsigned char *color = (unsigned char*) (tempBuf1 + i);
 		// blue
@@ -231,8 +230,9 @@ void draw(uint32_t *buf) {
 		// red
 		color[2] = max(0, color[2] - redFade);
 	}
+}
 
-	// Move particles
+void moveParticles() {
 	for (int i=0; i<particleCount; i++) {
 		particle *p = particles + i;
 
@@ -288,6 +288,14 @@ void draw(uint32_t *buf) {
 
 		tempBuf1[pixel((int)particles[i].posX, (int)particles[i].posY)] = particleColor;
 	}
+}
+
+void draw(uint32_t *buf) {
+	swap(tempBuf1, tempBuf2);
+	
+	blur();
+	fade();
+	moveParticles();
 
 	// Copy final result
 	for (int i=0; i<xSize*ySize; i++) {
