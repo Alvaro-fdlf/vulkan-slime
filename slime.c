@@ -15,9 +15,11 @@
  * CONSTANTS TO MODIFY BEHAVIOR AT COMPILE TIME GO HERE
  */
 const int monitorIndex = 0; // Maybe make it command line option later
-#define particleCount 10000
+#define particleCount 100000
 const double particleSpeed = 1.0; // distance traveled per frame
-const double maxRandRadianChange = M_PI * 0.05; // Maximum random change of angle (in radians) per frame on top of the steering
+const double steerAmplitude = M_PI * 0.2; // Angle of field of vision of particle and how much it steers in one frame
+const int steerLength = 20; // How many steps away to look for pixels to steer towards
+const double maxRandRadianChange = M_PI * 0.08; // Maximum random change of angle (in radians) per frame on top of the steering
 const uint32_t particleColor = 0x00FFFFFF; // XRGB
 const uint8_t redFade = 0x1, greenFade = 0x1, blueFade = 0x1; // change these to get different effects
 /*
@@ -220,7 +222,29 @@ void draw(uint32_t *buf) {
 	for (int i=0; i<particleCount; i++) {
 		particle *p = particles + i;
 
-		// First change direction randomly a bit
+		// Steer towards highest luma pixel some steps away in 3 directions
+		double angles[3] = {p->angle - steerAmplitude, p->angle, p->angle + steerAmplitude};
+		int pixels[3];
+		double lumas[3] = {0, 0, 0};
+		for (int j=0; j<3; j++) {
+			double lookPosX = p->posX + particleSpeed * steerLength * cos(angles[j]);
+			double lookPosY = p->posY + particleSpeed * steerLength * sin(angles[j]);
+			if (lookPosX < 0 || lookPosX > xSize-1 || lookPosY < 0 || lookPosY > ySize-1)
+				continue;
+			pixels[j] = pixel((int)lookPosX, (int)lookPosY);
+			// https://en.wikipedia.org/wiki/Luma_(video)
+			unsigned char *color = (unsigned char*) (tempBuf1 + pixels[j]);
+			lumas[j] += color[0] * 0.0722;
+			lumas[j] += color[1] * 0.7152;
+			lumas[j] += color[2] * 0.2126;
+		}
+		if (lumas[0] > lumas[1] && lumas[0] > lumas[2]) {
+			p->angle = angles[0];
+		} else if (lumas[2] > lumas[0] && lumas[2] > lumas[1]) {
+			p->angle = angles[2];
+		}
+
+		// Change direction randomly a bit
 		p->angle += (rand() % 201 - 100) / (100.0 / maxRandRadianChange);
 		p->dirX = particleSpeed * cos(p->angle);
 		p->dirY = particleSpeed * sin(p->angle);
