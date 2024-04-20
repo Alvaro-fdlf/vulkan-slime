@@ -2,7 +2,8 @@
  * CONSTANTS TO MODIFY BEHAVIOR AT COMPILE TIME GO HERE
  */
 const int monitorIndex = 0; // Maybe make it command line option later
-#define particleCount 10
+#define particleCount 100
+const double particleSpeed = 1.0; // distance traveled per frame
 
 #include <stddef.h>
 #include <assert.h>
@@ -66,10 +67,18 @@ unsigned long long getMicros() {
 void genParticle(particle *p) {
 	p->posX = rand() % (xSize/2) + xSize/4;
 	p->posY = rand() % (ySize/2) + ySize/4;
+	int angle = rand();
+	p->dirX = particleSpeed * cos(angle);
+	p->dirY = particleSpeed * sin(angle);
 }
 
 void draw(uint32_t *buf) {
+	for (int i=0; i<xSize*ySize; i++) {
+		backBuf[i] = frontBuf[i];
+	}
 	for (int i=0; i<particleCount; i++) {
+		particles[i].posX += particles[i].dirX;
+		particles[i].posY += particles[i].dirY;
 		buf[pixel((int)particles[i].posX, (int)particles[i].posY)] = 0x00FFFFFF;
 	}
 }
