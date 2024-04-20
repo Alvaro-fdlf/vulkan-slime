@@ -17,8 +17,13 @@
 const int monitorIndex = 0; // Maybe make it command line option later
 #define particleCount 10000
 const double particleSpeed = 1.0; // distance traveled per frame
+const double maxRandRadianChange = M_PI * 0.05; // Maximum random change of angle (in radians) per frame on top of the steering
 const uint32_t particleColor = 0x00FFFFFF; // XRGB
 const uint8_t redFade = 0x1, greenFade = 0x1, blueFade = 0x1; // change these to get different effects
+/*
+ *
+ */
+
 
 #define pixel(x, y) ((y)*xSize + (x))
 #define min(x, y) ({ \
@@ -38,7 +43,7 @@ const uint8_t redFade = 0x1, greenFade = 0x1, blueFade = 0x1; // change these to
 }
 
 typedef struct {
-	double posX, posY, dirX, dirY;
+	double posX, posY, dirX, dirY, angle;
 } particle;
 particle particles[particleCount];
 uint32_t *tempBuf1, *tempBuf2; // copying from frontBuf to backBuf is slower than from a usual tempBuf to backBuf (why?)
@@ -77,9 +82,9 @@ unsigned long long getMicros() {
 void genParticle(particle *p) {
 	p->posX = rand() % (xSize/2) + xSize/4;
 	p->posY = rand() % (ySize/2) + ySize/4;
-	int angle = rand();
-	p->dirX = particleSpeed * cos(angle);
-	p->dirY = particleSpeed * sin(angle);
+	p->angle = (double) rand() / RAND_MAX * 2 * M_PI;
+	p->dirX = particleSpeed * cos(p->angle);
+	p->dirY = particleSpeed * sin(p->angle);
 }
 
 void draw(uint32_t *buf) {
@@ -213,23 +218,34 @@ void draw(uint32_t *buf) {
 
 	// Move particles
 	for (int i=0; i<particleCount; i++) {
+		particle *p = particles + i;
+
+		// First change direction randomly a bit
+		p->angle += (rand() % 201 - 100) / (100.0 / maxRandRadianChange);
+		p->dirX = particleSpeed * cos(p->angle);
+		p->dirY = particleSpeed * sin(p->angle);
+
 		particles[i].posX += particles[i].dirX;
 		particles[i].posY += particles[i].dirY;
 		if (particles[i].posX < 0) {
 			particles[i].posX = abs(particles[i].posX);
 			particles[i].dirX *= -1;
+			particles[i].angle = (particles[i].angle + M_PI) * -1;
 		}
 		if (particles[i].posX > xSize-1) {
 			particles[i].posX = xSize-1 - abs(xSize-1 - particles[i].posX);
 			particles[i].dirX *= -1;
+			particles[i].angle = (particles[i].angle + M_PI) * -1;
 		}
 		if (particles[i].posY < 0) {
 			particles[i].posY = abs(particles[i].posY);
 			particles[i].dirY *= -1;
+			particles[i].angle = particles[i].angle * -1;
 		}
 		if (particles[i].posY > ySize-1) {
 			particles[i].posY = ySize-1 - abs(ySize-1 - particles[i].posY);
 			particles[i].dirY *= -1;
+			particles[i].angle = particles[i].angle * -1;
 		}
 
 		tempBuf1[pixel((int)particles[i].posX, (int)particles[i].posY)] = particleColor;
