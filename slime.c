@@ -253,10 +253,10 @@ void moveParticles() {
 			lumas[j] += color[2] * 0.2126;
 		}
 		if (lumas[0] > lumas[1] && lumas[0] > lumas[2]) {
-			p->angle = angles[0];
-		} else if (lumas[2] > lumas[0] && lumas[2] > lumas[1]) {
 			p->angle = angles[2];
-		} else if (lumas[1] > 0.3) { // promotes more complex looking paths and more new paths
+		} else if (lumas[2] > lumas[0] && lumas[2] > lumas[1]) {
+			p->angle = angles[0];
+		} else if (false && lumas[1] > 0.3) { // promotes more complex looking paths and more new paths
 			if (lumas[0] > lumas[2])
 				p->angle = angles[0];
 			else
