@@ -119,6 +119,10 @@ void vkSetup () {
 		queueInfos[i].pQueuePriorities = NULL; // all same priority
 	}
 
+	// Add features from supportedFeatures to requiredFeatures to enable them
+	VkPhysicalDeviceFeatures supportedFeatures, requiredFeatures = {};
+	vkGetPhysicalDeviceFeatures(devs[devInd], &supportedFeatures);
+
 	VkDeviceCreateInfo devInfo;
 	devInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 	devInfo.pNext = NULL;
@@ -129,7 +133,7 @@ void vkSetup () {
 	devInfo.ppEnabledLayerNames = NULL;
 	devInfo.enabledExtensionCount = 0;
 	devInfo.ppEnabledExtensionNames = NULL;
-	devInfo.pEnabledFeatures = NULL;
+	devInfo.pEnabledFeatures = requiredFeatures;
 
 	VkDevice dev;
 	result = vkCreateDevice(devs[devInd], &devInfo, NULL, &dev);
