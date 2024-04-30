@@ -102,5 +102,38 @@ void vkSetup () {
 	}
 	printf("--------------\n");
 
+	// Create logical device
+	int devInd = 0;
+	uint32_t queueFamilyCount;
+	vkGetPhysicalDeviceQueueFamilyProperties(devs[devInd], &queueFamilyCount, NULL);
+	VkQueueFamilyProperties queueFamilies[queueFamilyCount];
+	vkGetPhysicalDeviceQueueFamilyProperties(devs[devInd], &queueFamilyCount, queueFamilies);
+
+	VkDeviceQueueCreateInfo queueInfos[queueFamilyCount];
+	for (int i=0; i<queueFamilyCount; i++) {
+		queueInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueInfos[i].pNext = NULL;
+		queueInfos[i].flags = 0;
+		queueInfos[i].queueFamilyIndex = i;
+		queueInfos[i].queueCount = queueFamilies[i].queueCount;
+		queueInfos[i].pQueuePriorities = NULL; // all same priority
+	}
+
+	VkDeviceCreateInfo devInfo;
+	devInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	devInfo.pNext = NULL;
+	devInfo.flags = 0;
+	devInfo.queueCreateInfoCount = queueFamilyCount;
+	devInfo.pQueueCreateInfos = queueInfos;
+	devInfo.enabledLayerCount = 0;
+	devInfo.ppEnabledLayerNames = NULL;
+	devInfo.enabledExtensionCount = 0;
+	devInfo.ppEnabledExtensionNames = NULL;
+	devInfo.pEnabledFeatures = NULL;
+
+	VkDevice dev;
+	result = vkCreateDevice(devs[devInd], &devInfo, NULL, &dev);
+	vkFail("Failed to create logical device\n");
+
 	return;
 }
