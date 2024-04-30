@@ -2,6 +2,13 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+static VkResult result;
+#define vkFail(msg) \
+	if (result != VK_SUCCESS) {\
+		fprintf(stderr, (msg)); \
+		abort(); \
+	}
+
 void vkSetup () {
 	VkInstance inst;
 	VkApplicationInfo appInfo;
@@ -25,9 +32,25 @@ void vkSetup () {
 	instInfo.ppEnabledExtensionNames = NULL;
 
 	VkResult result = vkCreateInstance(&instInfo, NULL, &inst);
-	if (result != VK_SUCCESS) {
-		fprintf(stderr, "Failed to create vulkan instance");
+	vkFail("Failed to create vulkan instance\n");
+
+	// Enumerate physical devices
+	uint32_t devCount;
+	result = vkEnumeratePhysicalDevices(inst, &devCount, NULL);
+	vkFail("Failed to get amount of physical devices\n");
+
+	printf("This computer has %d Vulkan compatible devices\n", devCount);
+	if (devCount == 0)
 		abort();
+
+	VkPhysicalDevice devs[devCount];
+	result = vkEnumeratePhysicalDevices(inst, &devCount, devs);
+	vkFail("Failed to enumerate physical devices\n");
+	printf("Enumerationg devices available\n");
+	for (int i=0; i<devCount; i++) {
+		VkPhysicalDeviceProperties props;
+		vkGetPhysicalDeviceProperties(devs[i], &props);
+		printf("Name: %s, API version: %u\n", props.deviceName, props.apiVersion);
 	}
 
 	return;
