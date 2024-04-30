@@ -49,9 +49,36 @@ void vkSetup () {
 	printf("Enumerationg devices available\n");
 	for (int i=0; i<devCount; i++) {
 		VkPhysicalDeviceProperties props;
+		VkPhysicalDeviceMemoryProperties memProps;
+
 		vkGetPhysicalDeviceProperties(devs[i], &props);
+		printf("--------------\n");
 		printf("Name: %s, API version: %u\n", props.deviceName, props.apiVersion);
+
+		vkGetPhysicalDeviceMemoryProperties(devs[i], &memProps);
+		printf("Memory type count: %u, memory heap count: %u\n", memProps.memoryTypeCount, memProps.memoryHeapCount);
+
+		for (int j=0; j<memProps.memoryTypeCount; j++) {
+			VkMemoryType *type = memProps.memoryTypes + j;
+			VkMemoryHeap *heap = memProps.memoryHeaps + type->heapIndex;
+
+			printf("Heap for type %d: Index %d, Size %ldMB\n", j, type->heapIndex, heap->size / 1000000);
+
+			printf("Memory type %d properties: ", j);
+			if (type->propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+				printf("DEVICE_LOCAL ");
+			if (type->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT)
+				printf("HOST_VISIBLE ");
+			if (type->propertyFlags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)
+				printf("HOST_COHERENT ");
+			if (type->propertyFlags & VK_MEMORY_PROPERTY_HOST_CACHED_BIT)
+				printf("HOST_CACHED ");
+			if (type->propertyFlags & VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT)
+				printf("LAZILY_ALLOCATED ");
+			printf("\n\n");
+		}
 	}
+	printf("--------------\n");
 
 	return;
 }
