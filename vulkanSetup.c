@@ -77,6 +77,28 @@ void vkSetup () {
 				printf("LAZILY_ALLOCATED ");
 			printf("\n\n");
 		}
+
+		uint32_t queueFamilyCount;
+		vkGetPhysicalDeviceQueueFamilyProperties(devs[i], &queueFamilyCount, NULL);
+		VkQueueFamilyProperties queueFamilies[queueFamilyCount];
+		vkGetPhysicalDeviceQueueFamilyProperties(devs[i], &queueFamilyCount, queueFamilies);
+		printf("Queue family count: %u\n", queueFamilyCount);
+
+		for (int j=0; j<queueFamilyCount; j++) {
+			VkQueueFamilyProperties *qFam = queueFamilies + j;
+			printf("Queue family %d\n", j);
+			printf("Queue count: %d\n", qFam->queueCount);
+			printf("Queue properties: ");
+			if (qFam->queueFlags & VK_QUEUE_GRAPHICS_BIT)
+				printf("GRAPHICS ");
+			if (qFam->queueFlags & VK_QUEUE_COMPUTE_BIT)
+				printf("COMPUTE ");
+			if (qFam->queueFlags & VK_QUEUE_TRANSFER_BIT)
+				printf("TRANSFER ");
+			if (qFam->queueFlags & VK_QUEUE_SPARSE_BINDING_BIT)
+				printf("SPARSE_BINDING ");
+			printf("\n\n");
+		}
 	}
 	printf("--------------\n");
 
