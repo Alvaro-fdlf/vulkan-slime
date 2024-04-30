@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 #include <math.h>
 #include "dumbBuffers.h"
+#include "vulkanSetup.h"
 
 /*
  * VARIABLES TO MODIFY BEHAVIOR AT COMPILE TIME GO HERE
@@ -59,6 +60,8 @@ void draw(uint32_t *buf);
 void genParticle(particle *p);
 
 int main(int argc, char *argv[]) {
+	vkSetup(); // just for testing for now
+
 	getDumbBuffers(monitorIndex);
 	tempBuf1 = (uint32_t*) malloc(sizeof(uint32_t) * xSize * ySize);
 	tempBuf2 = (uint32_t*) malloc(sizeof(uint32_t) * xSize * ySize);
