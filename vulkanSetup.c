@@ -70,7 +70,7 @@ static void printPhysicalDevicesInfo(uint32_t devCount, VkPhysicalDevice *devs) 
 	printf("--------------\n");
 }
 
-void vkSetup() {
+static void createInstance() {
 	VkApplicationInfo appInfo;
 	VkInstanceCreateInfo instInfo;
 
@@ -111,6 +111,12 @@ void vkSetup() {
 
 	VkResult result = vkCreateInstance(&instInfo, NULL, &inst);
 	vkFail("Failed to create vulkan instance\n");
+
+	free(names);
+}
+
+void vkSetup() {
+	createInstance();
 
 	// Enumerate physical devices
 	uint32_t devCount;
