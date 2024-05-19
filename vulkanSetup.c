@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+static VkInstance inst;
+static VkDevice dev;
+
 static VkResult result;
 #define vkFail(msg) \
 	if (result != VK_SUCCESS) {\
@@ -68,7 +71,6 @@ static void printPhysicalDevicesInfo(uint32_t devCount, VkPhysicalDevice *devs) 
 }
 
 void vkSetup() {
-	VkInstance inst;
 	VkApplicationInfo appInfo;
 	VkInstanceCreateInfo instInfo;
 
@@ -161,7 +163,6 @@ void vkSetup() {
 	devInfo.ppEnabledExtensionNames = NULL;
 	devInfo.pEnabledFeatures = &requiredFeatures;
 
-	VkDevice dev;
 	result = vkCreateDevice(devs[devInd], &devInfo, NULL, &dev);
 	vkFail("Failed to create logical device\n");
 
