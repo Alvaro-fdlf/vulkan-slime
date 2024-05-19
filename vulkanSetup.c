@@ -138,7 +138,11 @@ void vkSetup() {
 		queueInfos[i].flags = 0;
 		queueInfos[i].queueFamilyIndex = i;
 		queueInfos[i].queueCount = queueFamilies[i].queueCount;
-		queueInfos[i].pQueuePriorities = NULL; // all same priority
+		float *priorities = (float *) malloc(queueInfos[i].queueCount * sizeof(float));
+		for (int j=0; j<queueInfos[i].queueCount; j++) {
+			priorities[j] = 1.0; // all same priority
+		}
+		queueInfos[i].pQueuePriorities = priorities;
 	}
 
 	// Add features from supportedFeatures to requiredFeatures to enable them
