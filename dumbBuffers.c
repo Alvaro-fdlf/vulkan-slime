@@ -82,8 +82,9 @@ static void getDumbBuffersFromKMS(int monitorIndex) {
 	drmModeSetCrtc(fd, crtc->crtc_id, frontBufId, 0, 0, &(connector->connector_id), 1, mode);
 }
 
+static xcb_connection_t *c;
 static int getDrmLeaseFromX(int outputIndex) {
-	xcb_connection_t *c;
+	int leasefd;
 	xcb_window_t win;
 	xcb_randr_lease_t leaseId;
 	xcb_randr_output_t outputId;
@@ -120,8 +121,11 @@ static int getDrmLeaseFromX(int outputIndex) {
 			crtcId = xcb_randr_get_output_info_crtcs(outputReply)[i];
 			xcb_randr_get_crtc_info_cookie_t crtcCookie = xcb_randr_get_crtc_info(c, crtcId, resources->config_timestamp);
 			xcb_randr_get_crtc_info_reply_t *crtcReply = xcb_randr_get_crtc_info_reply(c, crtcCookie, NULL);
-			if (crtcReply->width == 0 && crtcReply->height == 0) // indicates crtc is unused
+			if (crtcReply->width == 0 && crtcReply->height == 0) { // indicates crtc is unused
+				free(crtcReply);
 				break;
+			}
+			free(crtcReply);
 		}
 	} else {
 		crtcId = xcb_randr_get_output_info_crtcs(outputReply)[0];
@@ -130,7 +134,12 @@ static int getDrmLeaseFromX(int outputIndex) {
 	// create lease having all parameters
 	xcb_randr_create_lease_cookie_t leaseCookie = xcb_randr_create_lease(c, win, leaseId, 1, 1, &crtcId, &outputId);
 	xcb_randr_create_lease_reply_t *reply = xcb_randr_create_lease_reply(c, leaseCookie, NULL);
-	return *xcb_randr_create_lease_reply_fds(c, reply);
+	leasefd = *xcb_randr_create_lease_reply_fds(c, reply);
+
+	free(resources);
+	free(outputReply);
+	free(reply);
+	return leasefd;
 }
 
 // Functions exposed in the header file
