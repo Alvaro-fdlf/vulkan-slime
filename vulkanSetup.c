@@ -115,9 +115,7 @@ static void createInstance() {
 	free(names);
 }
 
-void vkSetup() {
-	createInstance();
-
+void createLogicalDevice() {
 	// Enumerate physical devices
 	uint32_t devCount;
 	result = vkEnumeratePhysicalDevices(inst, &devCount, NULL);
@@ -172,5 +170,15 @@ void vkSetup() {
 	result = vkCreateDevice(devs[devInd], &devInfo, NULL, &dev);
 	vkFail("Failed to create logical device\n");
 
+	for (int i=0; i<queueFamilyCount; i++) {
+		free((void *) queueInfos[i].pQueuePriorities);
+	}
+}
+
+void vkSetup() {
+	createInstance();
+	createLogicalDevice();
+
+	
 	return;
 }
