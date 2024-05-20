@@ -27,9 +27,11 @@ static void getCrtcFromCurrentConnector() {
 		for (int k=0; k<res->count_crtcs; k++) {
 			if (encoder->possible_crtcs && 1ul<<k) {
 				crtc = drmModeGetCrtc(fd, res->crtcs[k]);
+				drmModeFreeEncoder(encoder);
 				return;
 			}
 		}
+		drmModeFreeEncoder(encoder);
 	}
 }
 
