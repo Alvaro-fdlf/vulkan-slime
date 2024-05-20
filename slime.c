@@ -274,22 +274,22 @@ void moveParticles() {
 		particles[i].posX += particles[i].dirX;
 		particles[i].posY += particles[i].dirY;
 		if (particles[i].posX < 0) {
-			particles[i].posX = abs(particles[i].posX);
+			particles[i].posX = fabs(particles[i].posX);
 			particles[i].dirX *= -1;
 			particles[i].angle = (particles[i].angle + M_PI) * -1;
 		}
 		if (particles[i].posX > xSize-1) {
-			particles[i].posX = xSize-1 - abs(xSize-1 - particles[i].posX);
+			particles[i].posX = xSize-1 - fabs(xSize-1 - particles[i].posX);
 			particles[i].dirX *= -1;
 			particles[i].angle = (particles[i].angle + M_PI) * -1;
 		}
 		if (particles[i].posY < 0) {
-			particles[i].posY = abs(particles[i].posY);
+			particles[i].posY = fabs(particles[i].posY);
 			particles[i].dirY *= -1;
 			particles[i].angle = particles[i].angle * -1;
 		}
 		if (particles[i].posY > ySize-1) {
-			particles[i].posY = ySize-1 - abs(ySize-1 - particles[i].posY);
+			particles[i].posY = ySize-1 - fabs(ySize-1 - particles[i].posY);
 			particles[i].dirY *= -1;
 			particles[i].angle = particles[i].angle * -1;
 		}
