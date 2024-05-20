@@ -63,8 +63,8 @@ int main(int argc, char *argv[]) {
 	vkSetup(); // just for testing for now
 
 	getDumbBuffers(monitorIndex);
-	tempBuf1 = (uint32_t*) malloc(sizeof(uint32_t) * xSize * ySize);
-	tempBuf2 = (uint32_t*) malloc(sizeof(uint32_t) * xSize * ySize);
+	tempBuf1 = (uint32_t*) calloc(xSize * ySize, sizeof(uint32_t));
+	tempBuf2 = (uint32_t*) calloc(xSize * ySize, sizeof(uint32_t));
 	srand(getMicros());
 	for (int i=0; i<particleCount; i++) {
 		genParticle(particles + i);
