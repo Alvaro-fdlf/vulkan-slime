@@ -6,14 +6,14 @@
 #include <sys/mman.h>
 
 uint32_t *frontBuf, *backBuf;
-int xSize = 1920, ySize = 1080;
+unsigned int xSize, ySize;
 
 static int fd;
 static drmModeResPtr res;
 static drmModeConnectorPtr connector;
 static drmModeCrtcPtr crtc;
 static drmModeModeInfoPtr mode;
-static int frontBufId, backBufId;
+static uint32_t frontBufId, backBufId;
 
 static void getCrtcFromCurrentConnector() {
 	// make sure it's connected
@@ -198,7 +198,7 @@ void waitVBlankAndSwapBuffers() {
 	drmWaitVBlank(fd, &vblank);
 
 
-	int temp = frontBufId;
+	uint32_t temp = frontBufId;
 	frontBufId = backBufId;
 	backBufId = temp;
 	uint32_t *tempPtr = frontBuf;

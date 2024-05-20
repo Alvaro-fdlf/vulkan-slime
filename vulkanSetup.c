@@ -14,7 +14,7 @@ static VkResult result;
 
 static void printPhysicalDevicesInfo(uint32_t devCount, VkPhysicalDevice *devs) {
 	printf("Enumerationg devices available\n");
-	for (int i=0; i<devCount; i++) {
+	for (unsigned int i=0; i<devCount; i++) {
 		VkPhysicalDeviceProperties props;
 		VkPhysicalDeviceMemoryProperties memProps;
 
@@ -25,7 +25,7 @@ static void printPhysicalDevicesInfo(uint32_t devCount, VkPhysicalDevice *devs) 
 		vkGetPhysicalDeviceMemoryProperties(devs[i], &memProps);
 		printf("Memory type count: %u, memory heap count: %u\n", memProps.memoryTypeCount, memProps.memoryHeapCount);
 
-		for (int j=0; j<memProps.memoryTypeCount; j++) {
+		for (unsigned int j=0; j<memProps.memoryTypeCount; j++) {
 			VkMemoryType *type = memProps.memoryTypes + j;
 			VkMemoryHeap *heap = memProps.memoryHeaps + type->heapIndex;
 
@@ -51,7 +51,7 @@ static void printPhysicalDevicesInfo(uint32_t devCount, VkPhysicalDevice *devs) 
 		vkGetPhysicalDeviceQueueFamilyProperties(devs[i], &queueFamilyCount, queueFamilies);
 		printf("Queue family count: %u\n", queueFamilyCount);
 
-		for (int j=0; j<queueFamilyCount; j++) {
+		for (unsigned int j=0; j<queueFamilyCount; j++) {
 			VkQueueFamilyProperties *qFam = queueFamilies + j;
 			printf("Queue family %d\n", j);
 			printf("Queue count: %d\n", qFam->queueCount);
@@ -101,7 +101,7 @@ static void createInstance() {
 	printf("There are %d layers to enable:\n", layerCount);
 	instInfo.enabledLayerCount = layerCount;
 	char **names = (char**) malloc(layerCount * sizeof(char *));
-	for (int i=0; i<layerCount; i++) {
+	for (unsigned int i=0; i<layerCount; i++) {
 		names[i] = layers[i].layerName;
 		printf("%s: %s\n", layers[i].layerName, layers[i].description);
 		
@@ -109,7 +109,7 @@ static void createInstance() {
 	instInfo.ppEnabledLayerNames = (const char * const *) names;
 	printf("\n");
 
-	VkResult result = vkCreateInstance(&instInfo, NULL, &inst);
+	result = vkCreateInstance(&instInfo, NULL, &inst);
 	vkFail("Failed to create vulkan instance\n");
 
 	free(names);
@@ -138,14 +138,14 @@ void createLogicalDevice() {
 	vkGetPhysicalDeviceQueueFamilyProperties(devs[devInd], &queueFamilyCount, queueFamilies);
 
 	VkDeviceQueueCreateInfo queueInfos[queueFamilyCount];
-	for (int i=0; i<queueFamilyCount; i++) {
+	for (unsigned int i=0; i<queueFamilyCount; i++) {
 		queueInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
 		queueInfos[i].pNext = NULL;
 		queueInfos[i].flags = 0;
 		queueInfos[i].queueFamilyIndex = i;
 		queueInfos[i].queueCount = queueFamilies[i].queueCount;
 		float *priorities = (float *) malloc(queueInfos[i].queueCount * sizeof(float));
-		for (int j=0; j<queueInfos[i].queueCount; j++) {
+		for (unsigned int j=0; j<queueInfos[i].queueCount; j++) {
 			priorities[j] = 1.0; // all same priority
 		}
 		queueInfos[i].pQueuePriorities = priorities;
@@ -170,7 +170,7 @@ void createLogicalDevice() {
 	result = vkCreateDevice(devs[devInd], &devInfo, NULL, &dev);
 	vkFail("Failed to create logical device\n");
 
-	for (int i=0; i<queueFamilyCount; i++) {
+	for (unsigned int i=0; i<queueFamilyCount; i++) {
 		free((void *) queueInfos[i].pQueuePriorities);
 	}
 }

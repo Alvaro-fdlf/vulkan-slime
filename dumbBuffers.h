@@ -4,7 +4,7 @@
 #include <xcb/randr.h>
 
 extern uint32_t *frontBuf, *backBuf;
-extern int xSize, ySize;
+extern unsigned int xSize, ySize;
 
 void getDumbBuffers(int monitorIndex);
 void waitVBlankAndSwapBuffers();

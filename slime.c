@@ -23,10 +23,10 @@ int steerLength = 25; // How many steps away to look for pixels to steer towards
 double maxRandRadianChange = M_PI * 0.08; // Maximum random change of angle (in radians) per frame on top of the steering
 uint32_t particleColor = 0x0060FFE0; // XRGB
 uint8_t redFade = 0x1, greenFade = 0x3, blueFade = 0x1; // change these to get different effects
-const int8_t blurKernel[9] = {4, 2, 4, // can be not const, but blur is the bottleneck and it makes a bit of a difference
+const unsigned int blurKernel[9] = {4, 2, 4, // can be not const, but blur is the bottleneck and it makes a bit of a difference
 				2, 1, 2,
 				4, 2, 4};
-int blurDivide = 25; // should be set to the sum of elements of blurkernel
+unsigned int blurDivide = 25; // should be set to the sum of elements of blurkernel
 /*
  *
  */
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
 		unsigned long long end = getMicros();
 		waitVBlankAndSwapBuffers();
 
-		long long elapsed = end - start;
+		unsigned long long elapsed = end - start;
 		printf("%llu microseconds this frame\n", elapsed);
 	}
 	return 0;
@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
 unsigned long long getMicros() {
 	struct timespec tms;
 	clock_gettime(CLOCK_MONOTONIC_RAW, &tms);
-	return tms.tv_sec * 1000000 + tms.tv_nsec/1000;
+	return tms.tv_sec*1000000llu + tms.tv_nsec/1000llu;
 }
 
 void genParticle(particle *p) {
@@ -143,7 +143,7 @@ void blur() {
 	}
 
 	// edges
-	for (int x=1; x<xSize-1; x++) { // up edge
+	for (unsigned int x=1; x<xSize-1; x++) { // up edge
 		target = (unsigned char*) (tempBuf1 + pixel(x, 0));
 		cl = (unsigned char*) (tempBuf2 + pixel(x-1, 0));
 		cc = (unsigned char*) (tempBuf2 + pixel(x, 0));
@@ -157,7 +157,7 @@ void blur() {
 			target[i] = temp / blurDivide;
 		}
 	}
-	for (int x=1; x<xSize-1; x++) { // down edge
+	for (unsigned int x=1; x<xSize-1; x++) { // down edge
 		target = (unsigned char*) (tempBuf1 + pixel(x, ySize-1));
 		ul = (unsigned char*) (tempBuf2 + pixel(x-1, ySize-2));
 		uc = (unsigned char*) (tempBuf2 + pixel(x, ySize-2));
@@ -171,7 +171,7 @@ void blur() {
 			target[i] = temp / blurDivide;
 		}
 	}
-	for (int y=1; y<ySize-1; y++) { // left edge
+	for (unsigned int y=1; y<ySize-1; y++) { // left edge
 		target = (unsigned char*) (tempBuf1 + pixel(0, y));
 		uc = (unsigned char*) (tempBuf2 + pixel(0, y-1));
 		ur = (unsigned char*) (tempBuf2 + pixel(1, y-1));
@@ -185,7 +185,7 @@ void blur() {
 			target[i] = temp / blurDivide;
 		}
 	}
-	for (int y=1; y<ySize-1; y++) { // right edge
+	for (unsigned int y=1; y<ySize-1; y++) { // right edge
 		target = (unsigned char*) (tempBuf1 + pixel(xSize-1, y));
 		ul = (unsigned char*) (tempBuf2 + pixel(xSize-2, y-1));
 		uc = (unsigned char*) (tempBuf2 + pixel(xSize-1, y-1));
@@ -201,8 +201,8 @@ void blur() {
 	}
 
 	// center
-	for (int x=1; x<xSize-1; x++) {
-		for (int y=1; y<ySize-1; y++) {
+	for (unsigned int x=1; x<xSize-1; x++) {
+		for (unsigned int y=1; y<ySize-1; y++) {
 			target = (unsigned char*) (tempBuf1 + pixel(x, y));
 			ul = (unsigned char*) (tempBuf2 + pixel(x-1, y-1));
 			uc = (unsigned char*) (tempBuf2 + pixel(x, y-1));
@@ -224,7 +224,7 @@ void blur() {
 }
 
 void fade() {
-	for (int i=0; i<xSize*ySize; i++) {
+	for (unsigned int i=0; i<xSize*ySize; i++) {
 		unsigned char *color = (unsigned char*) (tempBuf1 + i);
 		// blue
 		color[0] = max(0, color[0] - blueFade);
@@ -241,14 +241,14 @@ void moveParticles() {
 
 		// Steer towards highest luma pixel some steps away in 3 directions
 		double angles[3] = {p->angle - steerAmplitude, p->angle, p->angle + steerAmplitude};
-		int pixels[3];
+		unsigned int pixels[3];
 		double lumas[3] = {0, 0, 0};
 		for (int j=0; j<3; j++) {
-			double lookPosX = p->posX + particleSpeed * steerLength * cos(angles[j]);
-			double lookPosY = p->posY + particleSpeed * steerLength * sin(angles[j]);
+			int lookPosX = p->posX + particleSpeed * steerLength * cos(angles[j]);
+			int lookPosY = p->posY + particleSpeed * steerLength * sin(angles[j]);
 			if (lookPosX < 0 || lookPosX > xSize-1 || lookPosY < 0 || lookPosY > ySize-1)
 				continue;
-			pixels[j] = pixel((int)lookPosX, (int)lookPosY);
+			pixels[j] = pixel(lookPosX, lookPosY);
 			// https://en.wikipedia.org/wiki/Luma_(video)
 			unsigned char *color = (unsigned char*) (tempBuf1 + pixels[j]);
 			lumas[j] += color[0] * 0.0722;
@@ -294,7 +294,7 @@ void moveParticles() {
 			particles[i].angle = particles[i].angle * -1;
 		}
 
-		tempBuf1[pixel((int)particles[i].posX, (int)particles[i].posY)] = particleColor;
+		tempBuf1[pixel((unsigned int)particles[i].posX, (unsigned int)particles[i].posY)] = particleColor;
 	}
 }
 
@@ -306,7 +306,7 @@ void draw(uint32_t *buf) {
 	moveParticles();
 
 	// Copy final result
-	for (int i=0; i<xSize*ySize; i++) {
+	for (unsigned int i=0; i<xSize*ySize; i++) {
 		buf[i] = tempBuf1[i];
 	}
 }
