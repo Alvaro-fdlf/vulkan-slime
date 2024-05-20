@@ -1,7 +1,8 @@
 PKGFLAGS = `pkg-config --cflags --libs libdrm xcb-randr xcb vulkan`
 OPTFLAGS = -O3 -flto -march=native
-DEBUGFLAGS = -Wall -Wextra -Wshadow -Wconversion -Wfloat-equal -Wduplicated-cond -Wlogical-op -fsanitize=undefined -fno-sanitize-recover -g
 # can add -fsanitize=addressi to DEBUGFLAGS if not using valgrind
+# also can add -Wconversion, but it may be too strict
+DEBUGFLAGS = -Wall -Wextra -Wshadow -Wfloat-equal -Wduplicated-cond -Wlogical-op -fsanitize=undefined -fno-sanitize-recover -g
 CFLAGS = 
 
 all: CFLAGS = $(OPTFLAGS)
