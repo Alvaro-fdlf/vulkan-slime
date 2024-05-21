@@ -97,8 +97,8 @@ static void getDumbBuffersFromKMS(int monitorIndex) {
 	drmModeSetCrtc(fd, crtc->crtc_id, frontBufId, 0, 0, &(connector->connector_id), 1, mode);
 }
 
-static xcb_connection_t *c;
 static int getDrmLeaseFromX(int outputIndex) {
+	static xcb_connection_t *c;
 	int leasefd;
 	xcb_window_t win;
 	xcb_randr_lease_t leaseId;
@@ -154,6 +154,7 @@ static int getDrmLeaseFromX(int outputIndex) {
 	free(resources);
 	free(outputReply);
 	free(reply);
+	xcb_disconnect(c);
 	return leasefd;
 }
 
