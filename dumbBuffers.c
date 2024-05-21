@@ -15,6 +15,19 @@ static drmModeCrtcPtr crtc;
 static drmModeModeInfoPtr mode;
 static uint32_t frontBufId, backBufId;
 
+static uint64_t dumbBuffersSize;
+
+void cleanUpDumbBuffers() {
+	drmModeFreeResources(res);
+	//drmModeFreeConnector(connector); gets freed somewhere else?
+	drmModeFreeCrtc(crtc);
+	drmModeFreeModeInfo(mode);
+
+	munmap(frontBuf, dumbBuffersSize);
+	munmap(backBuf, dumbBuffersSize);
+	close(fd);
+}
+
 static void getCrtcFromCurrentConnector() {
 	// make sure it's connected
 	if (connector->connection != DRM_MODE_CONNECTED)
@@ -70,16 +83,16 @@ static void getDumbBuffersFromKMS(int monitorIndex) {
 
 	// create 2 buffers for page flipping
 	uint32_t handle, pitch;
-	uint64_t size, offset;
-	drmModeCreateDumbBuffer(fd, xSize, ySize, 32, 0, &handle, &pitch, &size);
+	uint64_t offset;
+	drmModeCreateDumbBuffer(fd, xSize, ySize, 32, 0, &handle, &pitch, &dumbBuffersSize);
 	drmModeMapDumbBuffer(fd, handle, &offset);
 	drmModeAddFB(fd, xSize, ySize, 24, 32, pitch, handle, &frontBufId);
-	frontBuf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
+	frontBuf = mmap(NULL, dumbBuffersSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
 	
-	drmModeCreateDumbBuffer(fd, xSize, ySize, 32, 0, &handle, &pitch, &size);
+	drmModeCreateDumbBuffer(fd, xSize, ySize, 32, 0, &handle, &pitch, &dumbBuffersSize);
 	drmModeMapDumbBuffer(fd, handle, &offset);
 	drmModeAddFB(fd, xSize, ySize, 24, 32, pitch, handle, &backBufId);
-	backBuf = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
+	backBuf = mmap(NULL, dumbBuffersSize, PROT_READ | PROT_WRITE, MAP_SHARED, fd, offset);
 
 	drmModeSetCrtc(fd, crtc->crtc_id, frontBufId, 0, 0, &(connector->connector_id), 1, mode);
 }

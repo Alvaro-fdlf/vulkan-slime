@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <math.h>
+#include <signal.h>
 #include "dumbBuffers.h"
 #include "vulkanSetup.h"
 
@@ -59,10 +60,23 @@ unsigned long long getMicros();
 void draw(uint32_t *buf);
 void genParticle(particle *p);
 
-int main(int argc, char *argv[]) {
-	vkSetup(); // just for testing for now
+// SIGINT is the normal way this program terminates, so make sure atexit() functions can clean up
+void sigintHandler(int _) {
+	exit(0);
+}
 
+int main(int argc, char *argv[]) {
+	struct sigaction sigact;
+	sigact.sa_handler = sigintHandler;
+	sigact.sa_flags = 0;
+	sigemptyset(&sigact.sa_mask);
+	if (sigaction(SIGINT, &sigact, NULL))
+		abort();
+
+	vkSetup(); // just for testing for now
 	getDumbBuffers(monitorIndex);
+	atexit(cleanUpDumbBuffers);
+
 	tempBuf1 = (uint32_t*) calloc(xSize * ySize, sizeof(uint32_t));
 	tempBuf2 = (uint32_t*) calloc(xSize * ySize, sizeof(uint32_t));
 	srand(getMicros());

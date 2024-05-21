@@ -8,3 +8,4 @@ extern unsigned int xSize, ySize;
 
 void getDumbBuffers(int monitorIndex);
 void waitVBlankAndSwapBuffers();
+void cleanUpDumbBuffers();
