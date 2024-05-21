@@ -65,6 +65,11 @@ void sigintHandler(int _) {
 	exit(0);
 }
 
+void cleanupTempBufs() {
+	free(tempBuf1);
+	free(tempBuf2);
+}
+
 int main(int argc, char *argv[]) {
 	struct sigaction sigact;
 	sigact.sa_handler = sigintHandler;
@@ -79,6 +84,8 @@ int main(int argc, char *argv[]) {
 
 	tempBuf1 = (uint32_t*) calloc(xSize * ySize, sizeof(uint32_t));
 	tempBuf2 = (uint32_t*) calloc(xSize * ySize, sizeof(uint32_t));
+	atexit(cleanupTempBufs);
+
 	srand(getMicros());
 	for (int i=0; i<particleCount; i++) {
 		genParticle(particles + i);
