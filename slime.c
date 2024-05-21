@@ -79,6 +79,7 @@ int main(int argc, char *argv[]) {
 		abort();
 
 	vkSetup(); // just for testing for now
+	atexit(vkCleanup);
 	getDumbBuffers(monitorIndex);
 	atexit(cleanUpDumbBuffers);
 

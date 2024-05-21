@@ -182,3 +182,9 @@ void vkSetup() {
 	
 	return;
 }
+
+void vkCleanup() {
+	vkDeviceWaitIdle(dev);
+	vkDestroyDevice(dev, NULL);
+	vkDestroyInstance(inst, NULL);
+}
