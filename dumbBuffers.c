@@ -10,10 +10,12 @@ uint32_t *frontBuf, *backBuf;
 unsigned int xSize, ySize;
 
 static int fd;
+/*
 static drmModeResPtr res;
 static drmModeConnectorPtr connector;
 static drmModeCrtcPtr crtc;
 static drmModeModeInfoPtr mode;
+*/
 static uint32_t frontBufId, backBufId;
 
 static uint64_t dumbBuffersSize;
@@ -26,9 +28,10 @@ void cleanUpDumbBuffers() {
 
 	munmap(frontBuf, dumbBuffersSize);
 	munmap(backBuf, dumbBuffersSize);
-	close(fd);
+	cleanUpDrmMaster();
 }
 
+/*
 static void getCrtcFromCurrentConnector() {
 	// make sure it's connected
 	if (connector->connection != DRM_MODE_CONNECTED)
@@ -70,6 +73,7 @@ static void getConnectorWithCrtc(int monitorIndex) {
 		getCrtcFromCurrentConnector();
 	}
 }
+*/
 
 static void getDumbBuffersFromKMS(int monitorIndex) {
 	getConnectorWithCrtc(monitorIndex);

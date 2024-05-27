@@ -5,7 +5,17 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+static int fd;
+drmModeResPtr res;
+drmModeConnectorPtr connector;
+drmModeCrtcPtr crtc;
+drmModeModeInfoPtr mode;
+
 static int getDrmLeaseFromX(int outputIndex);
+
+void cleanUpDrmMaster() {
+	close(fd);
+}
 
 int getDrmMasterFd(int monitorIndex, int *isLeased, const char *fileName) {
 	if (monitorIndex < 0) {
@@ -13,7 +23,6 @@ int getDrmMasterFd(int monitorIndex, int *isLeased, const char *fileName) {
 		abort();
 	}
 
-	int fd;
 	int cardNum = 0;
 	char cardName[30];
 	while (1) {
@@ -105,4 +114,46 @@ static int getDrmLeaseFromX(int outputIndex) {
 	free(reply);
 	xcb_disconnect(c);
 	return leasefd;
+}
+
+void getCrtcFromCurrentConnector() {
+	// make sure it's connected
+	if (connector->connection != DRM_MODE_CONNECTED)
+		return;
+
+	// iterate over all possible encoders, and all possible crtcs
+	// take first available crtc, the encoder is set up automatically
+	for (int j=0; j<connector->count_encoders; j++) {
+		drmModeEncoderPtr encoder = drmModeGetEncoder(fd, connector->encoders[j]);
+		for (int k=0; k<res->count_crtcs; k++) {
+			if (encoder->possible_crtcs && 1ul<<k) {
+				crtc = drmModeGetCrtc(fd, res->crtcs[k]);
+				drmModeFreeEncoder(encoder);
+				return;
+			}
+		}
+		drmModeFreeEncoder(encoder);
+	}
+}
+
+void getConnectorWithCrtc(int monitorIndex) {
+	connector = NULL;
+	crtc = NULL;
+
+	if (monitorIndex == 0) {
+		// Choose first available connector and a suitable crtc
+		for (int i=0; i<res->count_connectors; i++) {
+			connector = drmModeGetConnector(fd, res->connectors[i]);
+			getCrtcFromCurrentConnector();
+			if (crtc != NULL)
+				return;
+		}
+	} else {
+		if (monitorIndex > res->count_connectors) {
+			fprintf(stderr, "There aren't enough monitors, choose a lower index\n");
+			abort();
+		}
+		connector = drmModeGetConnector(fd, res->connectors[monitorIndex-1]);
+		getCrtcFromCurrentConnector();
+	}
 }
