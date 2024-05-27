@@ -1,4 +1,4 @@
 #include <vulkan/vulkan.h>
 
-void vkSetup();
+void vkSetup(int monitorIndex);
 void vkCleanup();

@@ -1,9 +1,13 @@
 #include "vulkanSetup.h"
+#include "drmMaster.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 
 static VkInstance inst;
+static VkPhysicalDevice physDev;
 static VkDevice dev;
+static int fd;
 
 static VkResult result;
 #define vkFail(msg) \
@@ -86,10 +90,16 @@ static void createInstance() {
 	instInfo.pNext = NULL;
 	instInfo.flags = 0;
 	instInfo.pApplicationInfo = &appInfo;
-	instInfo.enabledLayerCount = 0;
-	instInfo.ppEnabledLayerNames = NULL;
-	instInfo.enabledExtensionCount = 0;
-	instInfo.ppEnabledExtensionNames = NULL;
+
+	// Need presentation extensions, specifically for full screen with DRM KMS on Linux
+	const char * const extNames[] = {
+		"VK_KHR_surface",
+		"VK_KHR_display",
+		"VK_EXT_direct_mode_display",
+		"VK_EXT_acquire_drm_display"
+	};
+	instInfo.enabledExtensionCount = sizeof(extNames) / sizeof(char *);
+	instInfo.ppEnabledExtensionNames = extNames;
 
 	// Enumerate layers and enable all of them in the instance
 	uint32_t layerCount;
@@ -113,6 +123,14 @@ static void createInstance() {
 	vkFail("Failed to create vulkan instance\n");
 
 	free(names);
+}
+
+
+VkResult (*vkGetDrmDisplay) (VkPhysicalDevice physicalDevice, int32_t drmFd, uint32_t connectorId, VkDisplayKHR *display);
+VkResult (*vkAcquireDrmDisplay) (VkPhysicalDevice physicalDevice, int32_t fd, VkDisplayKHR display);
+void getExtensionFunctions() {
+	vkGetDrmDisplay = vkGetInstanceProcAddr(inst, "vkGetDrmDisplayEXT");
+	vkAcquireDrmDisplay = vkGetInstanceProcAddr(inst, "vkAcquireDrmDisplayEXT");
 }
 
 void createLogicalDevice() {
@@ -169,17 +187,29 @@ void createLogicalDevice() {
 
 	result = vkCreateDevice(devs[devInd], &devInfo, NULL, &dev);
 	vkFail("Failed to create logical device\n");
+	physDev = devs[devInd];
 
 	for (unsigned int i=0; i<queueFamilyCount; i++) {
 		free((void *) queueInfos[i].pQueuePriorities);
 	}
 }
 
-void vkSetup() {
+void vkSetup(int monitorIndex) {
 	createInstance();
+	getExtensionFunctions();
 	createLogicalDevice();
 
-	
+	int isLeased;
+	fd = getDrmMasterFd(monitorIndex, &isLeased);
+	if (isLeased)
+		monitorIndex = 0;
+	getConnectorWithCrtc(monitorIndex);
+	VkDisplayKHR display;
+	result = vkGetDrmDisplay(physDev, fd, connector->connector_id, &display);
+	vkFail("Failed to get DRM display\n");
+
+	result = vkAcquireDrmDisplay(physDev, fd, display);
+	vkFail("Failed to get permission to display to the DRM display\n");
 	return;
 }
 
@@ -187,4 +217,6 @@ void vkCleanup() {
 	vkDeviceWaitIdle(dev);
 	vkDestroyDevice(dev, NULL);
 	vkDestroyInstance(inst, NULL);
+
+	close(fd);
 }
