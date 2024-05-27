@@ -107,14 +107,8 @@ static void getDumbBuffersFromKMS(int monitorIndex) {
 // monitorIndex == 0 asks for first available monitor it finds
 void getDumbBuffers(int monitorIndex) {
 	int isLeased;
-	char cardName[30] = "none";
 
-	fd = getDrmMasterFd(monitorIndex, &isLeased, cardName);
-	res = drmModeGetResources(fd);
-	if (res == NULL) {
-		fprintf(stderr, "Couldn't get resources from card %s\n", cardName);
-		abort();
-	}
+	fd = getDrmMasterFd(monitorIndex, &isLeased);
 	if (isLeased) {
 		getDumbBuffersFromKMS(0);
 	} else

@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 static int fd;
+char cardName[30] = "none";
 drmModeResPtr res;
 drmModeConnectorPtr connector;
 drmModeCrtcPtr crtc;
@@ -17,14 +18,13 @@ void cleanUpDrmMaster() {
 	close(fd);
 }
 
-int getDrmMasterFd(int monitorIndex, int *isLeased, const char *fileName) {
+int getDrmMasterFd(int monitorIndex, int *isLeased) {
 	if (monitorIndex < 0) {
 		fprintf(stderr, "The monitor index must be at least 0");
 		abort();
 	}
 
 	int cardNum = 0;
-	char cardName[30];
 	while (1) {
 		sprintf(cardName, "/dev/dri/card%d", cardNum);
 		fd = open(cardName, O_RDWR);
@@ -49,9 +49,6 @@ int getDrmMasterFd(int monitorIndex, int *isLeased, const char *fileName) {
 		fd = getDrmLeaseFromX(monitorIndex);
 	}
 
-	if (fileName != NULL) {
-		strcpy(cardName, fileName);
-	}
 	return fd;
 }
 
@@ -139,6 +136,12 @@ void getCrtcFromCurrentConnector() {
 void getConnectorWithCrtc(int monitorIndex) {
 	connector = NULL;
 	crtc = NULL;
+
+	res = drmModeGetResources(fd);
+	if (res == NULL) {
+		fprintf(stderr, "Couldn't get resources from card %s\n", cardName);
+		abort();
+	}
 
 	if (monitorIndex == 0) {
 		// Choose first available connector and a suitable crtc
