@@ -11,11 +11,14 @@ all: output
 debug: CFLAGS = $(DEBUGFLAGS)
 debug: output
 
-output: slime.o dumbBuffers.o vulkanSetup.o
-	gcc $(PKGFLAGS) $(CFLAGS) slime.o dumbBuffers.o vulkanSetup.o -o output -lm
+output: slime.o drmMaster.o dumbBuffers.o vulkanSetup.o
+	gcc $(PKGFLAGS) $(CFLAGS) slime.o drmMaster.o dumbBuffers.o vulkanSetup.o -o output -lm
 
 slime.o: slime.c
 	gcc $(PKGFLAGS) $(CFLAGS) -c slime.c
+
+drmMaster.o: drmMaster.c drmMaster.h
+	gcc $(PKGFLAGS) $(CFLAGS) -c drmMaster.c
 
 dumbBuffers.o: dumbBuffers.c dumbBuffers.h
 	gcc $(PKGFLAGS) $(CFLAGS) -c dumbBuffers.c
