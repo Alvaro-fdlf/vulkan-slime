@@ -16,6 +16,7 @@
 /*
  * VARIABLES TO MODIFY BEHAVIOR AT COMPILE TIME GO HERE
  */
+int useVulkan = 1;
 const int monitorIndex = 0; // Maybe make it command line option later
 #define particleCount 200000
 double particleSpeed = 5.0; // distance traveled per frame
@@ -78,28 +79,31 @@ int main(int argc, char *argv[]) {
 	if (sigaction(SIGINT, &sigact, NULL))
 		abort();
 
-	vkSetup(); // just for testing for now
-	atexit(vkCleanup);
-	getDumbBuffers(monitorIndex);
-	atexit(cleanUpDumbBuffers);
+	if (useVulkan) {
+		vkSetup(monitorIndex); // just for testing for now
+		atexit(vkCleanup);
+	} else {
+		getDumbBuffers(monitorIndex);
+		atexit(cleanUpDumbBuffers);
 
-	tempBuf1 = (uint32_t*) calloc(xSize * ySize, sizeof(uint32_t));
-	tempBuf2 = (uint32_t*) calloc(xSize * ySize, sizeof(uint32_t));
-	atexit(cleanupTempBufs);
+		tempBuf1 = (uint32_t*) calloc(xSize * ySize, sizeof(uint32_t));
+		tempBuf2 = (uint32_t*) calloc(xSize * ySize, sizeof(uint32_t));
+		atexit(cleanupTempBufs);
 
-	srand(getMicros());
-	for (int i=0; i<particleCount; i++) {
-		genParticle(particles + i);
-	}
+		srand(getMicros());
+		for (int i=0; i<particleCount; i++) {
+			genParticle(particles + i);
+		}
 
-	while (1) {
-		unsigned long long start = getMicros();
-		draw(backBuf);
-		unsigned long long end = getMicros();
-		waitVBlankAndSwapBuffers();
+		while (1) {
+			unsigned long long start = getMicros();
+			draw(backBuf);
+			unsigned long long end = getMicros();
+			waitVBlankAndSwapBuffers();
 
-		unsigned long long elapsed = end - start;
-		printf("%llu microseconds this frame\n", elapsed);
+			unsigned long long elapsed = end - start;
+			printf("%llu microseconds this frame\n", elapsed);
+		}
 	}
 	return 0;
 }
