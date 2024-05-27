@@ -195,12 +195,14 @@ void createLogicalDevice() {
 }
 
 void vkSetup(int monitorIndex) {
+	int isLeased;
+	// Do this now, drmIsMaster(fd) may returns false otherwise
+	fd = getDrmMasterFd(monitorIndex, &isLeased);
+
 	createInstance();
 	getExtensionFunctions();
 	createLogicalDevice();
 
-	int isLeased;
-	fd = getDrmMasterFd(monitorIndex, &isLeased);
 	if (isLeased)
 		monitorIndex = 0;
 	getConnectorWithCrtc(monitorIndex);
