@@ -7,7 +7,11 @@
 static VkInstance inst;
 static VkPhysicalDevice physDev;
 VkSurfaceKHR surface;
+VkSwapchainKHR swapchain;
+VkExtent2D displayExtent;
 static VkDevice dev;
+uint32_t queueFamilyCount;
+VkQueueFamilyProperties *queueFamilies;
 static int fd;
 
 static VkResult result;
@@ -144,6 +148,14 @@ VkResult (*vkCreateDisplayPlaneSurface) (VkInstance instance,
 					const VkDisplaySurfaceCreateInfoKHR *pCreateInfo,
 					const VkAllocationCallbacks *pAllocator,
 					VkSurfaceKHR *pSurface);
+VkResult (*vkGetPhysicalDeviceSurfaceFormats) (VkPhysicalDevice physicalDevice,
+						VkSurfaceKHR surface,
+						uint32_t *pSurfaceFormatCount,
+						VkSurfaceFormatKHR *pSurfaceFormats);
+VkResult (*vkCreateSwapchain) (VkDevice device,
+				const VkSwapchainCreateInfoKHR *pCreateInfo,
+				const VkAllocationCallbacks *pAllocator,
+				VkSwapchainKHR *pSwapchain);
 void getExtensionFunctions() {
 	vkGetDrmDisplay = vkGetInstanceProcAddr(inst, "vkGetDrmDisplayEXT");
 	vkAcquireDrmDisplay = vkGetInstanceProcAddr(inst, "vkAcquireDrmDisplayEXT");
@@ -151,6 +163,8 @@ void getExtensionFunctions() {
 	vkGetDisplayPlaneSupportedDisplays = vkGetInstanceProcAddr(inst, "vkGetDisplayPlaneSupportedDisplaysKHR");
 	vkGetDisplayModeProperties = vkGetInstanceProcAddr(inst, "vkGetDisplayModePropertiesKHR");
 	vkCreateDisplayPlaneSurface = vkGetInstanceProcAddr(inst, "vkCreateDisplayPlaneSurfaceKHR");
+	vkGetPhysicalDeviceSurfaceFormats = vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfaceFormatsKHR");
+	vkCreateSwapchain = vkGetInstanceProcAddr(inst, "vkCreateSwapchainKHR");
 }
 
 void createLogicalDevice() {
@@ -170,9 +184,8 @@ void createLogicalDevice() {
 
 	// Create logical device
 	int devInd = 0;
-	uint32_t queueFamilyCount;
 	vkGetPhysicalDeviceQueueFamilyProperties(devs[devInd], &queueFamilyCount, NULL);
-	VkQueueFamilyProperties queueFamilies[queueFamilyCount];
+	queueFamilies = malloc(queueFamilyCount * sizeof(VkQueueFamilyProperties));
 	vkGetPhysicalDeviceQueueFamilyProperties(devs[devInd], &queueFamilyCount, queueFamilies);
 
 	VkDeviceQueueCreateInfo queueInfos[queueFamilyCount];
@@ -201,8 +214,12 @@ void createLogicalDevice() {
 	devInfo.pQueueCreateInfos = queueInfos;
 	devInfo.enabledLayerCount = 0;
 	devInfo.ppEnabledLayerNames = NULL;
-	devInfo.enabledExtensionCount = 0;
-	devInfo.ppEnabledExtensionNames = NULL;
+	const char * const extNames[] = {
+		"VK_KHR_swapchain"
+	};
+	devInfo.enabledExtensionCount = sizeof(extNames) / sizeof(char *);
+	devInfo.ppEnabledExtensionNames = extNames;
+
 	devInfo.pEnabledFeatures = &requiredFeatures;
 
 	result = vkCreateDevice(devs[devInd], &devInfo, NULL, &dev);
@@ -269,10 +286,11 @@ void createDisplaySurface(int monitorIndex) {
 	VkDisplayModePropertiesKHR modes[modeCount];
 	result = vkGetDisplayModeProperties(physDev, display, &modeCount, modes);
 	vkFail("Failed to get mode properties");
-	displayMode = modes[0].displayMode;
-	printf("Chosen mode: %ux%u, %f fps\n", modes[0].parameters.visibleRegion.width,
-						modes[0].parameters.visibleRegion.height,
-						modes[0].parameters.refreshRate / 1000.0);
+	int modeIdx = 0;
+	displayMode = modes[modeIdx].displayMode;
+	printf("Chosen mode: %ux%u, %f fps\n", modes[modeIdx].parameters.visibleRegion.width,
+						modes[modeIdx].parameters.visibleRegion.height,
+						modes[modeIdx].parameters.refreshRate / 1000.0);
 
 	VkDisplaySurfaceCreateInfoKHR surfaceCreateInfo;
 	surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_DISPLAY_SURFACE_CREATE_INFO_KHR;
@@ -284,11 +302,52 @@ void createDisplaySurface(int monitorIndex) {
 	surfaceCreateInfo.transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
 	surfaceCreateInfo.globalAlpha = 0.0;
 	surfaceCreateInfo.alphaMode = VK_DISPLAY_PLANE_ALPHA_OPAQUE_BIT_KHR; // no alpha
-	VkExtent2D imgExtent = {1920, 1080};
-	surfaceCreateInfo.imageExtent = imgExtent;
+	displayExtent = modes[modeIdx].parameters.visibleRegion;
+	surfaceCreateInfo.imageExtent = displayExtent;
 
 	result = vkCreateDisplayPlaneSurface(inst, &surfaceCreateInfo, NULL, &surface);
 	vkFail("Failed to create surface to display\n");
+}
+
+void createSwapchain() {
+	uint32_t formatCount;
+	vkGetPhysicalDeviceSurfaceFormats(physDev, surface, &formatCount, NULL);
+	VkSurfaceFormatKHR formats[formatCount];
+	vkGetPhysicalDeviceSurfaceFormats(physDev, surface, &formatCount, formats);
+	int formatIndex = -1;
+	for (uint32_t i=0; i<formatCount; i++) {
+		if (formats[i].format == VK_FORMAT_R8G8B8A8_UNORM || formats[i].format == VK_FORMAT_B8G8R8A8_UNORM) {
+			formatIndex = i;
+			break;
+		}
+	}
+	if (formatIndex == -1) {
+		fprintf(stderr, "Couldn't choose rgba or bgra formats for the swapchain\n");
+		abort();
+	}
+
+	VkSwapchainCreateInfoKHR swapchainCreateInfo;
+	swapchainCreateInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+	swapchainCreateInfo.pNext = NULL;
+	swapchainCreateInfo.flags = 0;
+	swapchainCreateInfo.surface = surface;
+	swapchainCreateInfo.minImageCount = 2;
+	swapchainCreateInfo.imageFormat = formats[formatIndex].format;
+	swapchainCreateInfo.imageColorSpace = formats[formatIndex].colorSpace;
+	swapchainCreateInfo.imageExtent = displayExtent;
+	swapchainCreateInfo.imageArrayLayers = 1;
+	swapchainCreateInfo.imageUsage = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	swapchainCreateInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	swapchainCreateInfo.queueFamilyIndexCount = 0; // ignored because exclusive
+	swapchainCreateInfo.pQueueFamilyIndices = NULL;
+	swapchainCreateInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+	swapchainCreateInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	swapchainCreateInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+	swapchainCreateInfo.clipped = VK_TRUE;
+	swapchainCreateInfo.oldSwapchain = 0;
+
+	vkCreateSwapchain(dev, &swapchainCreateInfo, NULL, &swapchain);
+	vkFail("Failed to create a swapchain\n");
 }
 
 void vkSetup(int monitorIndex) {
@@ -303,12 +362,14 @@ void vkSetup(int monitorIndex) {
 	if (isLeased)
 		monitorIndex = 0;
 	createDisplaySurface(monitorIndex);
+	createSwapchain();
 
 	return;
 }
 
 void vkCleanup() {
 	vkDeviceWaitIdle(dev);
+	vkDestroySwapchainKHR(dev, swapchain, NULL);
 	vkDestroyDevice(dev, NULL);
 	vkDestroySurfaceKHR(inst, surface, NULL);
 	vkDestroyInstance(inst, NULL);
