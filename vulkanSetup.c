@@ -6,6 +6,7 @@
 
 static VkInstance inst;
 static VkPhysicalDevice physDev;
+VkSurfaceKHR surface;
 static VkDevice dev;
 static int fd;
 
@@ -128,9 +129,28 @@ static void createInstance() {
 
 VkResult (*vkGetDrmDisplay) (VkPhysicalDevice physicalDevice, int32_t drmFd, uint32_t connectorId, VkDisplayKHR *display);
 VkResult (*vkAcquireDrmDisplay) (VkPhysicalDevice physicalDevice, int32_t fd, VkDisplayKHR display);
+VkResult (*vkGetPhysicalDeviceDisplayPlaneProperties) (VkPhysicalDevice physicalDevice,
+							uint32_t *pPropertyCount,
+							VkDisplayPlanePropertiesKHR *pProperties);
+VkResult (*vkGetDisplayPlaneSupportedDisplays) (VkPhysicalDevice physicalDevice,
+						uint32_t planeIndex,
+						uint32_t *pDisplayCount,
+						VkDisplayKHR *pDisplays);
+VkResult (*vkGetDisplayModeProperties) (VkPhysicalDevice physicalDevice,
+					VkDisplayKHR display,
+					uint32_t *pPropertyCount,
+					VkDisplayModePropertiesKHR *pProperties);
+VkResult (*vkCreateDisplayPlaneSurface) (VkInstance instance,
+					const VkDisplaySurfaceCreateInfoKHR *pCreateInfo,
+					const VkAllocationCallbacks *pAllocator,
+					VkSurfaceKHR *pSurface);
 void getExtensionFunctions() {
 	vkGetDrmDisplay = vkGetInstanceProcAddr(inst, "vkGetDrmDisplayEXT");
 	vkAcquireDrmDisplay = vkGetInstanceProcAddr(inst, "vkAcquireDrmDisplayEXT");
+	vkGetPhysicalDeviceDisplayPlaneProperties = vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceDisplayPlanePropertiesKHR");
+	vkGetDisplayPlaneSupportedDisplays = vkGetInstanceProcAddr(inst, "vkGetDisplayPlaneSupportedDisplaysKHR");
+	vkGetDisplayModeProperties = vkGetInstanceProcAddr(inst, "vkGetDisplayModePropertiesKHR");
+	vkCreateDisplayPlaneSurface = vkGetInstanceProcAddr(inst, "vkCreateDisplayPlaneSurfaceKHR");
 }
 
 void createLogicalDevice() {
@@ -194,6 +214,83 @@ void createLogicalDevice() {
 	}
 }
 
+void createDisplaySurface(int monitorIndex) {
+	getConnectorWithCrtc(monitorIndex);
+	VkDisplayKHR display;
+	result = vkGetDrmDisplay(physDev, fd, connector->connector_id, &display);
+	vkFail("Failed to get DRM display\n");
+
+	result = vkAcquireDrmDisplay(physDev, fd, display);
+	vkFail("Failed to get permission to display to the DRM display\n");
+
+	// Enumerate planes, then choose one that connects to the already chosen display
+	// It seems like a vulkan plane is not a DRM plane, but a DRM CRTC.
+	// When checking DRM objects I see 3 CRTCs but more than 3 planes, but
+	// on the tty screen vulkan says there are 3 planes. Also on X with the lease it says
+	// there's 1 plane, so hopefully it's considering only the leased CRTC thanks to some previous function
+	uint32_t planeCount;
+	result = vkGetPhysicalDeviceDisplayPlaneProperties(physDev, &planeCount, NULL);
+	vkFail("Failed to get plane count");
+	/*VkDisplayPlanePropertiesKHR planeProps[planeCount];
+	result = vkGetPhysicalDeviceDisplayPlaneProperties(physDev, &planeCount, planeProps);
+	vkFail("Failed to get plane properties");*/
+
+	uint32_t planeIndex;
+	int foundPlane = 0;
+	for (planeIndex=0; planeIndex<planeCount; planeIndex++) {
+		uint32_t displayCount;
+		result = vkGetDisplayPlaneSupportedDisplays(physDev, planeIndex, &displayCount, NULL);
+		if (result != VK_SUCCESS)
+			continue;
+		VkDisplayKHR displays[displayCount];
+		result = vkGetDisplayPlaneSupportedDisplays(physDev, planeIndex, &displayCount, displays);
+		if (result != VK_SUCCESS)
+			continue;
+
+		for (uint32_t j=0; j<displayCount; j++) {
+			if (displays[j] == display) {
+				foundPlane = 1;
+				break;
+			}
+		}
+		if (foundPlane)
+			break;
+	}
+	if (!foundPlane) {
+		fprintf(stderr, "Couldn't find a suitable plane (crtc?) for the display");
+		abort();
+	}
+
+	// Choose a mode, the first one should be the best
+	VkDisplayModeKHR displayMode;
+	uint32_t modeCount;
+	result = vkGetDisplayModeProperties(physDev, display, &modeCount, NULL);
+	vkFail("Failed to get mode count");
+	VkDisplayModePropertiesKHR modes[modeCount];
+	result = vkGetDisplayModeProperties(physDev, display, &modeCount, modes);
+	vkFail("Failed to get mode properties");
+	displayMode = modes[0].displayMode;
+	printf("Chosen mode: %ux%u, %f fps\n", modes[0].parameters.visibleRegion.width,
+						modes[0].parameters.visibleRegion.height,
+						modes[0].parameters.refreshRate / 1000.0);
+
+	VkDisplaySurfaceCreateInfoKHR surfaceCreateInfo;
+	surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_DISPLAY_SURFACE_CREATE_INFO_KHR;
+	surfaceCreateInfo.pNext = NULL;
+	surfaceCreateInfo.flags = 0;
+	surfaceCreateInfo.displayMode = displayMode;
+	surfaceCreateInfo.planeIndex = planeIndex;
+	surfaceCreateInfo.planeStackIndex = 0;
+	surfaceCreateInfo.transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+	surfaceCreateInfo.globalAlpha = 0.0;
+	surfaceCreateInfo.alphaMode = VK_DISPLAY_PLANE_ALPHA_OPAQUE_BIT_KHR; // no alpha
+	VkExtent2D imgExtent = {1920, 1080};
+	surfaceCreateInfo.imageExtent = imgExtent;
+
+	result = vkCreateDisplayPlaneSurface(inst, &surfaceCreateInfo, NULL, &surface);
+	vkFail("Failed to create surface to display\n");
+}
+
 void vkSetup(int monitorIndex) {
 	int isLeased;
 	// Do this now, drmIsMaster(fd) may returns false otherwise
@@ -205,19 +302,15 @@ void vkSetup(int monitorIndex) {
 
 	if (isLeased)
 		monitorIndex = 0;
-	getConnectorWithCrtc(monitorIndex);
-	VkDisplayKHR display;
-	result = vkGetDrmDisplay(physDev, fd, connector->connector_id, &display);
-	vkFail("Failed to get DRM display\n");
+	createDisplaySurface(monitorIndex);
 
-	result = vkAcquireDrmDisplay(physDev, fd, display);
-	vkFail("Failed to get permission to display to the DRM display\n");
 	return;
 }
 
 void vkCleanup() {
 	vkDeviceWaitIdle(dev);
 	vkDestroyDevice(dev, NULL);
+	vkDestroySurfaceKHR(inst, surface, NULL);
 	vkDestroyInstance(inst, NULL);
 
 	close(fd);
