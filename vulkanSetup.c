@@ -8,6 +8,8 @@ static VkInstance inst;
 static VkPhysicalDevice physDev;
 VkSurfaceKHR surface;
 VkSwapchainKHR swapchain;
+uint32_t imgCount;
+VkImage *images;
 VkExtent2D displayExtent;
 static VkDevice dev;
 uint32_t queueFamilyCount;
@@ -156,6 +158,7 @@ VkResult (*vkCreateSwapchain) (VkDevice device,
 				const VkSwapchainCreateInfoKHR *pCreateInfo,
 				const VkAllocationCallbacks *pAllocator,
 				VkSwapchainKHR *pSwapchain);
+VkResult (*vkGetSwapchainImages) (VkDevice device, VkSwapchainKHR swapchain, uint32_t *pSwapchainImageCount, VkImage *pSwapchainImages);
 void getExtensionFunctions() {
 	vkGetDrmDisplay = vkGetInstanceProcAddr(inst, "vkGetDrmDisplayEXT");
 	vkAcquireDrmDisplay = vkGetInstanceProcAddr(inst, "vkAcquireDrmDisplayEXT");
@@ -165,6 +168,7 @@ void getExtensionFunctions() {
 	vkCreateDisplayPlaneSurface = vkGetInstanceProcAddr(inst, "vkCreateDisplayPlaneSurfaceKHR");
 	vkGetPhysicalDeviceSurfaceFormats = vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfaceFormatsKHR");
 	vkCreateSwapchain = vkGetInstanceProcAddr(inst, "vkCreateSwapchainKHR");
+	vkGetSwapchainImages = vkGetInstanceProcAddr(inst, "vkGetSwapchainImagesKHR");
 }
 
 void createLogicalDevice() {
@@ -346,8 +350,14 @@ void createSwapchain() {
 	swapchainCreateInfo.clipped = VK_TRUE;
 	swapchainCreateInfo.oldSwapchain = 0;
 
-	vkCreateSwapchain(dev, &swapchainCreateInfo, NULL, &swapchain);
+	result = vkCreateSwapchain(dev, &swapchainCreateInfo, NULL, &swapchain);
 	vkFail("Failed to create a swapchain\n");
+
+	result = vkGetSwapchainImages(dev, swapchain, &imgCount, NULL);
+	vkFail("Failed to get swapchain image count\n");
+	images = malloc(imgCount * sizeof(VkImage));
+	result = vkGetSwapchainImages(dev, swapchain, &imgCount, images);
+	vkFail("Failed to get swapchain images\n");
 }
 
 void vkSetup(int monitorIndex) {
