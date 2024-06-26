@@ -6,6 +6,8 @@
 
 static VkInstance inst;
 static VkPhysicalDevice physDev;
+uint32_t qFamGraphicsIndex, qFamComputeIndex, qFamTransferIndex;
+
 VkSurfaceKHR surface;
 VkSwapchainKHR swapchain;
 uint32_t imgCount;
@@ -198,18 +200,35 @@ void createLogicalDevice() {
 	queueFamilies = malloc(queueFamilyCount * sizeof(VkQueueFamilyProperties));
 	vkGetPhysicalDeviceQueueFamilyProperties(devs[devInd], &queueFamilyCount, queueFamilies);
 
+	// Get a compute queue family, a graphics queue family and a transfer queue family
+	// For simplicity act as if they are all different even if some are the same
 	VkDeviceQueueCreateInfo queueInfos[queueFamilyCount];
-	for (unsigned int i=0; i<queueFamilyCount; i++) {
-		queueInfos[i].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-		queueInfos[i].pNext = NULL;
-		queueInfos[i].flags = 0;
-		queueInfos[i].queueFamilyIndex = i;
-		queueInfos[i].queueCount = queueFamilies[i].queueCount;
-		float *priorities = (float *) malloc(queueInfos[i].queueCount * sizeof(float));
-		for (unsigned int j=0; j<queueInfos[i].queueCount; j++) {
+	unsigned int qFamIndex, qInfoIndex=0;
+	VkQueueFlags qFamTypeNeeded = VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT;
+	for (qFamIndex=0; qFamIndex<queueFamilyCount; qFamIndex++) {
+		VkQueueFlags qFamFlags = queueFamilies[qFamIndex].queueFlags;
+
+		if (!(qFamFlags & qFamTypeNeeded))
+			continue;
+		if (qFamFlags & qFamTypeNeeded & VK_QUEUE_GRAPHICS_BIT)
+			qFamGraphicsIndex = qFamIndex;
+		if (qFamFlags & qFamTypeNeeded & VK_QUEUE_COMPUTE_BIT)
+			qFamComputeIndex = qFamIndex;
+		if (qFamFlags & qFamTypeNeeded & VK_QUEUE_TRANSFER_BIT)
+			qFamTransferIndex = qFamIndex;
+		qFamTypeNeeded &= ~qFamFlags;
+
+		queueInfos[qInfoIndex].sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueInfos[qInfoIndex].pNext = NULL;
+		queueInfos[qInfoIndex].flags = 0;
+		queueInfos[qInfoIndex].queueFamilyIndex = qFamIndex;
+		queueInfos[qInfoIndex].queueCount = queueFamilies[qFamIndex].queueCount;
+		float *priorities = (float *) malloc(queueInfos[qInfoIndex].queueCount * sizeof(float));
+		for (unsigned int j=0; j<queueInfos[qInfoIndex].queueCount; j++) {
 			priorities[j] = 1.0; // all same priority
 		}
-		queueInfos[i].pQueuePriorities = priorities;
+		queueInfos[qInfoIndex].pQueuePriorities = priorities;
+		qInfoIndex++;
 	}
 
 	// Add features from supportedFeatures to requiredFeatures to enable them
