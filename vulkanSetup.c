@@ -15,6 +15,7 @@ static VkDevice dev;
 uint32_t queueFamilyCount;
 VkQueueFamilyProperties *queueFamilies;
 static int fd;
+static uint32_t screenWidth, screenHeight, refreshRate;
 
 static VkResult result;
 #define vkFail(msg) \
@@ -292,9 +293,10 @@ void createDisplaySurface(int monitorIndex) {
 	vkFail("Failed to get mode properties");
 	int modeIdx = 0;
 	displayMode = modes[modeIdx].displayMode;
-	printf("Chosen mode: %ux%u, %f fps\n", modes[modeIdx].parameters.visibleRegion.width,
-						modes[modeIdx].parameters.visibleRegion.height,
-						modes[modeIdx].parameters.refreshRate / 1000.0);
+	screenWidth = modes[modeIdx].parameters.visibleRegion.width;
+	screenHeight = modes[modeIdx].parameters.visibleRegion.height;
+	refreshRate = modes[modeIdx].parameters.refreshRate;
+	printf("Chosen mode: %ux%u, %f fps\n", screenWidth, screenHeight, refreshRate/1000.0);
 
 	VkDisplaySurfaceCreateInfoKHR surfaceCreateInfo;
 	surfaceCreateInfo.sType = VK_STRUCTURE_TYPE_DISPLAY_SURFACE_CREATE_INFO_KHR;
