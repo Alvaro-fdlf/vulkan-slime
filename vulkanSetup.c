@@ -109,13 +109,13 @@ static void createInstance() {
 	instInfo.enabledExtensionCount = sizeof(extNames) / sizeof(char *);
 	instInfo.ppEnabledExtensionNames = extNames;
 
+#ifdef DEBUG
 	// Enumerate layers and enable all of them in the instance
 	uint32_t layerCount;
 	result = vkEnumerateInstanceLayerProperties(&layerCount, NULL);
 	vkFail("Failed to get amount of available layers\n");
 	VkLayerProperties layers[layerCount];
 	result = vkEnumerateInstanceLayerProperties(&layerCount, layers);
-
 	printf("There are %d layers to enable:\n", layerCount);
 	instInfo.enabledLayerCount = layerCount;
 	char **names = (char**) malloc(layerCount * sizeof(char *));
@@ -126,11 +126,16 @@ static void createInstance() {
 	}
 	instInfo.ppEnabledLayerNames = (const char * const *) names;
 	printf("\n");
+#else
+	instInfo.ppEnabledLayerNames = NULL;
+#endif
 
 	result = vkCreateInstance(&instInfo, NULL, &inst);
 	vkFail("Failed to create vulkan instance\n");
 
+#ifdef DEBUG
 	free(names);
+#endif
 }
 
 
