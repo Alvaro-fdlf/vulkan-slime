@@ -7,6 +7,9 @@
 static VkInstance inst;
 static VkPhysicalDevice physDev;
 uint32_t qFamGraphicsIndex, qFamComputeIndex, qFamTransferIndex;
+unsigned int hostMemTypeIndex, largeMemTypeIndex;
+VkMemoryType hostMemType, largeMemType;
+VkMemoryHeap hostMemHeap, largeMemHeap;
 
 VkSurfaceKHR surface;
 VkSwapchainKHR swapchain;
@@ -229,6 +232,35 @@ void createLogicalDevice() {
 		}
 		queueInfos[qInfoIndex].pQueuePriorities = priorities;
 		qInfoIndex++;
+	}
+
+	// Save the type and heap of the largest device local memory heap and the first host visible and device local
+	// The largest device local heap will have the images
+	// The host visible will be used to create the particles with the CPU
+	VkPhysicalDeviceMemoryProperties memProps;
+	vkGetPhysicalDeviceMemoryProperties(devs[devInd], &memProps);
+	VkDeviceSize largestSize = 0;
+	bool foundHostMem = false;
+	for (unsigned int i=0; i<memProps.memoryTypeCount; i++) {
+		VkMemoryType *curType = memProps.memoryTypes + i;
+		VkMemoryHeap *curHeap = memProps.memoryHeaps + curType->heapIndex;
+
+		if (curType->propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT &&
+		    curHeap->size > largestSize) {
+			largestSize = curHeap->size;
+			largeMemType = *curType;
+			largeMemHeap = *curHeap;
+			largeMemTypeIndex = i;
+		}
+
+		if (!foundHostMem &&
+		    curType->propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT &&
+		    curType->propertyFlags & VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) {
+			hostMemType = *curType;
+			hostMemHeap = *curHeap;
+			hostMemTypeIndex = i;
+			foundHostMem = true;
+		}
 	}
 
 	// Add features from supportedFeatures to requiredFeatures to enable them
