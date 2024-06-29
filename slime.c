@@ -18,7 +18,7 @@
  */
 int useVulkan = 1;
 const int monitorIndex = 0; // Maybe make it command line option later
-#define particleCount 200000
+const int particleCount = 200000;
 double particleSpeed = 5.0; // distance traveled per frame
 double steerAmplitude = M_PI * 0.16; // Angle of field of vision of particle and how much it steers in one frame
 int steerLength = 25; // How many steps away to look for pixels to steer towards
@@ -54,7 +54,7 @@ unsigned int blurDivide = 25; // should be set to the sum of elements of blurker
 typedef struct {
 	double posX, posY, dirX, dirY, angle;
 } particle;
-particle particles[particleCount];
+particle *particles;
 uint32_t *tempBuf1, *tempBuf2; // copying from frontBuf to backBuf is slower than from a usual tempBuf to backBuf (why?)
 
 unsigned long long getMicros();
@@ -66,7 +66,8 @@ void sigintHandler(int _) {
 	exit(0);
 }
 
-void cleanupTempBufs() {
+void cleanUpOtherBuffers() {
+	free(particles);
 	free(tempBuf1);
 	free(tempBuf2);
 }
@@ -86,9 +87,10 @@ int main(int argc, char *argv[]) {
 		getDumbBuffers(monitorIndex);
 		atexit(cleanUpDumbBuffers);
 
+		particles = malloc(particleCount * sizeof(particle));
 		tempBuf1 = (uint32_t*) calloc(xSize * ySize, sizeof(uint32_t));
 		tempBuf2 = (uint32_t*) calloc(xSize * ySize, sizeof(uint32_t));
-		atexit(cleanupTempBufs);
+		atexit(cleanUpOtherBuffers);
 
 		srand(getMicros());
 		for (int i=0; i<particleCount; i++) {

@@ -27,7 +27,11 @@ typedef struct vertex_t {
 	float y;
 	float z;
 } vertex;
-VkBuffer vertexBuf;
+typedef struct {
+	double posX, posY, dirX, dirY, angle;
+} particle;
+extern const int particleCount;
+VkBuffer vertexBuf, particleBuf;
 VkImage frontImg, backImg;
 
 static VkResult result;
@@ -466,6 +470,11 @@ void createResources() {
 	bufCreateInfo.pQueueFamilyIndices = NULL;
 	result = vkCreateBuffer(dev, &bufCreateInfo, NULL, &vertexBuf);
 	vkFail("Failed to create vertex buffer\n");
+
+	bufCreateInfo.size = sizeof(particle) * particleCount;
+	bufCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+	result = vkCreateBuffer(dev, &bufCreateInfo, NULL, &particleBuf);
+	vkFail("Failed to create particle buffer\n");
 }
 
 void vkSetup(int monitorIndex) {
@@ -488,6 +497,7 @@ void vkSetup(int monitorIndex) {
 
 void vkCleanup() {
 	vkDestroyBuffer(dev, vertexBuf, NULL);
+	vkDestroyBuffer(dev, particleBuf, NULL);
 	vkDestroyImage(dev, frontImg, NULL);
 	vkDestroyImage(dev, backImg, NULL);
 	vkDeviceWaitIdle(dev);
