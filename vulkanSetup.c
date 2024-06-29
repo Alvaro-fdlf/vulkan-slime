@@ -30,7 +30,7 @@ typedef struct vertex_t {
 	float z;
 } vertex;
 typedef struct {
-	double posX, posY, dirX, dirY, angle;
+	float posX, posY, dirX, dirY, angle;
 } particle;
 extern const int particleCount;
 VkBuffer vertexBuf, particleBuf;
