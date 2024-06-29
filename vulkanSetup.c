@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 static VkInstance inst;
 static VkPhysicalDevice physDev;
@@ -44,6 +45,33 @@ static VkResult result;
 		fprintf(stderr, (msg)); \
 		abort(); \
 	}
+
+
+
+VkShaderModule createModule(const char* fileName) {
+	char *contents;
+	int curFd = open(fileName, O_RDONLY);
+	off_t fileSize = lseek(curFd, 0, SEEK_END);
+	lseek(curFd, 0, SEEK_SET);
+	contents = malloc(fileSize);
+	off_t unread = fileSize;
+	while (unread > 0) {
+		unread -= read(curFd, contents + (fileSize-unread), unread);
+	}
+	close(curFd);
+
+	VkShaderModuleCreateInfo moduleInfo;
+	moduleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+	moduleInfo.pNext = NULL;
+	moduleInfo.flags = 0;
+	moduleInfo.codeSize = fileSize;
+	moduleInfo.pCode = contents;
+	VkShaderModule module;
+	VkResult = vkCreateShaderModule(dev, &moduleInfo, NULL, &module);
+	vkFail("Failed to create a shader module\n" + fileName);
+
+	return module;
+}
 
 static void printPhysicalDevicesInfo(uint32_t devCount, VkPhysicalDevice *devs) {
 	printf("Enumerationg devices available\n");
@@ -574,6 +602,10 @@ void createComputePipeline() {
 	vkCreatePipelineLayout(dev, &pipelineLayoutInfo, NULL, &pipelineLayout);
 	vkFail("Failed to create compute pipeline layout\n");
 
+	// Compute module
+	VkShaderModule computeModule = createModule("compute.spv");
+
+	vkDestroyShaderModule(dev, computeModule, NULL);
 	vkDestroyDescriptorSetLayout(dev, setLayout, NULL);
 	vkDestroyPipelineLayout(dev, pipelineLayout, NULL);
 }
