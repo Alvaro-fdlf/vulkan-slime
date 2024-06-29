@@ -22,6 +22,8 @@ VkQueueFamilyProperties *queueFamilies;
 static int fd;
 static uint32_t screenWidth, screenHeight, refreshRate;
 
+VkImage frontImg, backImg;
+
 static VkResult result;
 #define vkFail(msg) \
 	if (result != VK_SUCCESS) {\
@@ -418,6 +420,36 @@ void createSwapchain() {
 	vkFail("Failed to get swapchain images\n");
 }
 
+void createResources() {
+	VkExtent3D imgSize;
+	imgSize.width = screenWidth;
+	imgSize.height = screenHeight;
+	imgSize.depth = 1;
+
+	VkImageCreateInfo imgCreateInfo;
+	imgCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+	imgCreateInfo.pNext = NULL;
+	imgCreateInfo.flags = 0;
+	imgCreateInfo.imageType = VK_IMAGE_TYPE_2D;
+	imgCreateInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+	imgCreateInfo.extent = imgSize;
+	imgCreateInfo.mipLevels = 1;
+	imgCreateInfo.arrayLayers = 1;
+	imgCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+	imgCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+	imgCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
+				VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+	imgCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	imgCreateInfo.queueFamilyIndexCount = 0;
+	imgCreateInfo.pQueueFamilyIndices = NULL;
+	imgCreateInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+	result = vkCreateImage(dev, &imgCreateInfo, NULL, &frontImg);
+	vkFail("Failed to create front image\n");
+	result = vkCreateImage(dev, &imgCreateInfo, NULL, &backImg);
+	vkFail("Failed to create back image\n");
+}
+
 void vkSetup(int monitorIndex) {
 	int isLeased;
 	// Do this now, drmIsMaster(fd) may returns false otherwise
@@ -432,10 +464,13 @@ void vkSetup(int monitorIndex) {
 	createDisplaySurface(monitorIndex);
 	createSwapchain();
 
+	createResources();
 	return;
 }
 
 void vkCleanup() {
+	vkDestroyImage(dev, frontImg, NULL);
+	vkDestroyImage(dev, backImg, NULL);
 	vkDeviceWaitIdle(dev);
 	vkDestroySwapchainKHR(dev, swapchain, NULL);
 	vkDestroyDevice(dev, NULL);
