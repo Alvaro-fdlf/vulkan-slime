@@ -34,6 +34,9 @@ typedef struct {
 extern const int particleCount;
 VkBuffer vertexBuf, particleBuf;
 VkImage frontImg, backImg;
+VkDeviceSize particlesOffset;
+vertex *mappedVertices;
+particle *mappedParticles;
 
 static VkResult result;
 #define vkFail(msg) \
@@ -499,7 +502,6 @@ void allocDeviceMemory() {
 	vkBindImageMemory(dev, frontImg, imgsMem, (reqs.size / reqs.alignment + 1) * reqs.alignment);
 	vkFail("Failed to back frontImg with memory\n");
 
-	VkDeviceSize particlesOffset = 0;
 	vkGetBufferMemoryRequirements(dev, vertexBuf, &reqs);
 	if (!(reqs.memoryTypeBits & (1 << hostMemTypeIndex))) {
 		printf("Can't store vertex buffer in host visible memory heap\n");
@@ -522,6 +524,13 @@ void allocDeviceMemory() {
 	vkFail("Failed to back frontImg with memory\n");
 }
 
+void mapBufs() {
+	void *mappedMem;
+	vkMapMemory(dev, bufsMem, 0, VK_WHOLE_SIZE, 0, &mappedMem);
+	mappedVertices = (vertex*)mappedMem;
+	mappedParticles = (particle*)(mappedMem + particlesOffset);
+}
+
 void vkSetup(int monitorIndex) {
 	int isLeased;
 	// Do this now, drmIsMaster(fd) may returns false otherwise
@@ -538,10 +547,12 @@ void vkSetup(int monitorIndex) {
 
 	createResources();
 	allocDeviceMemory();
+	mapBufs();
 	return;
 }
 
 void vkCleanup() {
+	vkUnmapMemory(dev, bufsMem);
 	vkDestroyBuffer(dev, vertexBuf, NULL);
 	vkDestroyBuffer(dev, particleBuf, NULL);
 	vkDestroyImage(dev, frontImg, NULL);
