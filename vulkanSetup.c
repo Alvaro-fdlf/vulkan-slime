@@ -39,6 +39,8 @@ VkDeviceSize particlesOffset;
 vertex *mappedVertices;
 particle *mappedParticles;
 
+VkPipeline computePipeline;
+
 static VkResult result;
 #define vkFail(msg) \
 	if (result != VK_SUCCESS) {\
@@ -605,6 +607,37 @@ void createComputePipeline() {
 	// Compute module
 	VkShaderModule computeModule = createModule("compute.spv");
 
+	// Compute pipeline
+	VkSpecializationMapEntry specializationEntry;
+	specializationEntry.constantID = 0;
+	specializationEntry.offset = 0;
+	specializationEntry.size = 4;
+
+	VkSpecializationInfo specializationInfo;
+	specializationInfo.mapEntryCount = 1;
+	specializationInfo.pMapEntries = &specializationEntry;
+	specializationInfo.dataSize = 4;
+	specializationInfo.pData = &particleCount;
+
+	VkPipelineShaderStageCreateInfo shaderStageInfo;
+	shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+	shaderStageInfo.pNext = NULL;
+	shaderStageInfo.flags = 0;
+	shaderStageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+	shaderStageInfo.module = computeModule;
+	shaderStageInfo.pName = "main";
+	shaderStageInfo.pSpecializationInfo = &specializationInfo;
+
+	VkComputePipelineCreateInfo pipelineInfo;
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+	pipelineInfo.pNext = NULL;
+	pipelineInfo.flags = 0;
+	pipelineInfo.stage = shaderStageInfo;
+	pipelineInfo.layout = pipelineLayout;
+	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+	pipelineInfo.basePipelineIndex = 0;
+	vkCreateComputePipelines(dev, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &computePipeline);
+
 	vkDestroyShaderModule(dev, computeModule, NULL);
 	vkDestroyDescriptorSetLayout(dev, setLayout, NULL);
 	vkDestroyPipelineLayout(dev, pipelineLayout, NULL);
@@ -642,6 +675,7 @@ void vkSetup(int monitorIndex) {
 }
 
 void vkCleanup() {
+	vkDestroyPipeline(dev, computePipeline, NULL);
 	vkUnmapMemory(dev, bufsMem);
 	vkDestroyBuffer(dev, vertexBuf, NULL);
 	vkDestroyBuffer(dev, particleBuf, NULL);
