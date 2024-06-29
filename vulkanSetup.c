@@ -10,6 +10,7 @@ uint32_t qFamGraphicsIndex, qFamComputeIndex, qFamTransferIndex;
 unsigned int hostMemTypeIndex, largeMemTypeIndex;
 VkMemoryType hostMemType, largeMemType;
 VkMemoryHeap hostMemHeap, largeMemHeap;
+VkDeviceMemory imgsMem, bufsMem;
 
 VkSurfaceKHR surface;
 VkSwapchainKHR swapchain;
@@ -477,6 +478,50 @@ void createResources() {
 	vkFail("Failed to create particle buffer\n");
 }
 
+void allocDeviceMemory() {
+	VkMemoryAllocateInfo allocInfo;
+	allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+	allocInfo.pNext = NULL;
+
+	VkMemoryRequirements reqs;
+	vkGetImageMemoryRequirements(dev, backImg, &reqs);
+	if (!(reqs.memoryTypeBits & (1 << largeMemTypeIndex))) {
+		printf("Can't store images in large memory heap\n");
+		abort();
+	}
+	// both images are the same, assume same memory requirements
+	allocInfo.allocationSize = 2*reqs.size + 2*reqs.alignment;
+	allocInfo.memoryTypeIndex = largeMemTypeIndex;
+	result = vkAllocateMemory(dev, &allocInfo, NULL, &imgsMem);
+	vkFail("Failed to allocate device memory for images\n");
+	vkBindImageMemory(dev, backImg, imgsMem, 0);
+	vkFail("Failed to back backImg with memory\n");
+	vkBindImageMemory(dev, frontImg, imgsMem, (reqs.size / reqs.alignment + 1) * reqs.alignment);
+	vkFail("Failed to back frontImg with memory\n");
+
+	VkDeviceSize particlesOffset = 0;
+	vkGetBufferMemoryRequirements(dev, vertexBuf, &reqs);
+	if (!(reqs.memoryTypeBits & (1 << hostMemTypeIndex))) {
+		printf("Can't store vertex buffer in host visible memory heap\n");
+		abort();
+	}
+	particlesOffset = reqs.size;
+	vkGetBufferMemoryRequirements(dev, particleBuf, &reqs);
+	if (!(reqs.memoryTypeBits & (1 << hostMemTypeIndex))) {
+		printf("Can't store particle buffer in host visible memory heap\n");
+		abort();
+	}
+	particlesOffset = (particlesOffset / reqs.alignment + 1 ) * reqs.alignment;
+	allocInfo.allocationSize = particlesOffset + reqs.size;
+	allocInfo.memoryTypeIndex = hostMemTypeIndex;
+	result = vkAllocateMemory(dev, &allocInfo, NULL, &bufsMem);
+	vkFail("Failed to allocate device memory for buffers\n");
+	vkBindBufferMemory(dev, vertexBuf, bufsMem, 0);
+	vkFail("Failed to back backImg with memory\n");
+	vkBindBufferMemory(dev, particleBuf, bufsMem, particlesOffset);
+	vkFail("Failed to back frontImg with memory\n");
+}
+
 void vkSetup(int monitorIndex) {
 	int isLeased;
 	// Do this now, drmIsMaster(fd) may returns false otherwise
@@ -492,6 +537,7 @@ void vkSetup(int monitorIndex) {
 	createSwapchain();
 
 	createResources();
+	allocDeviceMemory();
 	return;
 }
 
@@ -500,6 +546,8 @@ void vkCleanup() {
 	vkDestroyBuffer(dev, particleBuf, NULL);
 	vkDestroyImage(dev, frontImg, NULL);
 	vkDestroyImage(dev, backImg, NULL);
+	vkFreeMemory(dev, imgsMem, NULL);
+	vkFreeMemory(dev, bufsMem, NULL);
 	vkDeviceWaitIdle(dev);
 	vkDestroySwapchainKHR(dev, swapchain, NULL);
 	vkDestroyDevice(dev, NULL);
