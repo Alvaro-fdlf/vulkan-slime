@@ -531,6 +531,36 @@ void mapBufs() {
 	mappedParticles = (particle*)(mappedMem + particlesOffset);
 }
 
+void createComputePipeline() {
+	VkDescriptorSetLayoutBinding bindings[3];
+	bindings[0].binding = 0;
+	bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; // particle buffer
+	bindings[0].descriptorCount = 1;
+	bindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	bindings[0].pImmutableSamplers = NULL;
+	bindings[1].binding = 1;
+	bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; // back image
+	bindings[1].descriptorCount = 1;
+	bindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	bindings[1].pImmutableSamplers = NULL;
+	bindings[2].binding = 2;
+	bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; // front image
+	bindings[2].descriptorCount = 1;
+	bindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+	bindings[2].pImmutableSamplers = NULL;
+	VkDescriptorSetLayoutCreateInfo setLayoutInfo;
+	setLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	setLayoutInfo.pNext = NULL;
+	setLayoutInfo.flags = 0;
+	setLayoutInfo.bindingCount = 3;
+	setLayoutInfo.pBindings = bindings;
+
+	VkDescriptorSetLayout setLayout;
+	result = vkCreateDescriptorSetLayout(dev, &setLayoutInfo, NULL, &setLayout);
+	vkFail("Failed to create compute pipeline descriptor set layout\n");
+	vkDestroyDescriptorSetLayout(dev, setLayout, NULL);
+}
+
 void vkSetup(int monitorIndex) {
 	int isLeased;
 	// Do this now, drmIsMaster(fd) may returns false otherwise
@@ -558,6 +588,7 @@ void vkSetup(int monitorIndex) {
 	mappedVertices[2].y = 2.0;
 	mappedVertices[2].z = 1.0;
 
+	createComputePipeline();
 	return;
 }
 
