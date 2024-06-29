@@ -548,6 +548,16 @@ void vkSetup(int monitorIndex) {
 	createResources();
 	allocDeviceMemory();
 	mapBufs();
+	mappedVertices[0].x = -1.0;
+	mappedVertices[0].y = 0.0;
+	mappedVertices[0].z = 1.0;
+	mappedVertices[1].x = 2.0;
+	mappedVertices[1].y = 0.0;
+	mappedVertices[1].z = 1.0;
+	mappedVertices[2].x = 0.5;
+	mappedVertices[2].y = 2.0;
+	mappedVertices[2].z = 1.0;
+
 	return;
 }
 
