@@ -532,6 +532,7 @@ void mapBufs() {
 }
 
 void createComputePipeline() {
+	// Descriptor set layout
 	VkDescriptorSetLayoutBinding bindings[3];
 	bindings[0].binding = 0;
 	bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; // particle buffer
@@ -558,7 +559,23 @@ void createComputePipeline() {
 	VkDescriptorSetLayout setLayout;
 	result = vkCreateDescriptorSetLayout(dev, &setLayoutInfo, NULL, &setLayout);
 	vkFail("Failed to create compute pipeline descriptor set layout\n");
+
+	// Pipeline layout
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo;
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.pNext = NULL;
+	pipelineLayoutInfo.flags = 0;
+	pipelineLayoutInfo.setLayoutCount = 1;
+	pipelineLayoutInfo.pSetLayouts = &setLayout;
+	pipelineLayoutInfo.pushConstantRangeCount = 0;
+	pipelineLayoutInfo.pPushConstantRanges = NULL;
+
+	VkPipelineLayout pipelineLayout;
+	vkCreatePipelineLayout(dev, &pipelineLayoutInfo, NULL, &pipelineLayout);
+	vkFail("Failed to create compute pipeline layout\n");
+
 	vkDestroyDescriptorSetLayout(dev, setLayout, NULL);
+	vkDestroyPipelineLayout(dev, pipelineLayout, NULL);
 }
 
 void vkSetup(int monitorIndex) {
