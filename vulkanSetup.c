@@ -35,12 +35,14 @@ typedef struct {
 extern const int particleCount;
 VkBuffer vertexBuf, particleBuf;
 VkImage frontImg, backImg;
+VkImageView frontImgView, backImgView;
 VkDeviceSize particlesOffset;
 vertex *mappedVertices;
 particle *mappedParticles;
 
 VkDescriptorPool descriptorPool;
 VkPipeline computePipeline;
+VkDescriptorSet compBackToFront, compFrontToBack;
 
 static VkResult result;
 #define vkFail(msg) \
@@ -466,6 +468,7 @@ void createSwapchain() {
 }
 
 void createResources() {
+	// Images
 	VkExtent3D imgSize;
 	imgSize.width = screenWidth;
 	imgSize.height = screenHeight;
@@ -494,6 +497,7 @@ void createResources() {
 	result = vkCreateImage(dev, &imgCreateInfo, NULL, &backImg);
 	vkFail("Failed to create back image\n");
 
+	// Buffers
 	VkBufferCreateInfo bufCreateInfo;
 	bufCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
 	bufCreateInfo.pNext = NULL;
@@ -553,6 +557,37 @@ void allocDeviceMemory() {
 	vkFail("Failed to back backImg with memory\n");
 	vkBindBufferMemory(dev, particleBuf, bufsMem, particlesOffset);
 	vkFail("Failed to back frontImg with memory\n");
+}
+
+void createViews() {
+	VkImageSubresourceRange subRange;
+	subRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+	subRange.baseMipLevel = 0;
+	subRange.levelCount = 1;
+	subRange.baseArrayLayer = 0;
+	subRange.layerCount = 1;
+
+	VkComponentMapping mapping;
+	mapping.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+	mapping.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+	mapping.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+	mapping.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+	VkImageViewCreateInfo imgViewInfo;
+	imgViewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+	imgViewInfo.pNext = NULL;
+	imgViewInfo.flags = 0;
+	imgViewInfo.image = frontImg;
+	imgViewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+	imgViewInfo.format = VK_FORMAT_R8G8B8A8_UNORM;
+	imgViewInfo.components = mapping;
+	imgViewInfo.subresourceRange = subRange;
+
+	result = vkCreateImageView(dev, &imgViewInfo, NULL, &frontImgView);
+	vkFail("Failed to create front image view\n");
+	imgViewInfo.image = backImg;
+	result = vkCreateImageView(dev, &imgViewInfo, NULL, &backImgView);
+	vkFail("Failed to create front image view\n");
 }
 
 void mapBufs() {
@@ -657,6 +692,65 @@ void createComputePipeline() {
 	pipelineInfo.basePipelineIndex = 0;
 	vkCreateComputePipelines(dev, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &computePipeline);
 
+	// Descriptor sets
+	VkDescriptorSetAllocateInfo allocInfo;
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.pNext = NULL;
+	allocInfo.descriptorPool = descriptorPool;
+	allocInfo.descriptorSetCount = 1;
+	allocInfo.pSetLayouts = &setLayout;
+	result = vkAllocateDescriptorSets(dev, &allocInfo, &compBackToFront);
+	vkFail("Failed to create compute descriptor layout\n");
+	result = vkAllocateDescriptorSets(dev, &allocInfo, &compFrontToBack);
+	vkFail("Failed to create compute descriptor layout\n");
+
+	// Binding to descriptor sets
+	VkWriteDescriptorSet writeDescriptor;
+	VkDescriptorBufferInfo bufInfo;
+	VkDescriptorImageInfo imgInfo;
+	bufInfo.offset = 0;
+	bufInfo.range = VK_WHOLE_SIZE;
+	imgInfo.sampler = VK_NULL_HANDLE;
+
+	// both: particle buffer
+	bufInfo.buffer = particleBuf;
+	writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writeDescriptor.pNext = NULL;
+	writeDescriptor.dstSet = compBackToFront;
+	writeDescriptor.dstBinding = 0;
+	writeDescriptor.dstArrayElement = 0;
+	writeDescriptor.descriptorCount = 1;
+	writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	writeDescriptor.pImageInfo = NULL;
+	writeDescriptor.pBufferInfo = &bufInfo;
+	writeDescriptor.pTexelBufferView = NULL;
+	vkUpdateDescriptorSets(dev, 1, &writeDescriptor, 0, NULL);
+	writeDescriptor.dstSet = compFrontToBack;
+	vkUpdateDescriptorSets(dev, 1, &writeDescriptor, 0, NULL);
+
+	// back to front: write image, front to back: read image
+	imgInfo.imageView = backImgView;
+	imgInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	writeDescriptor.dstSet = compBackToFront;
+	writeDescriptor.dstBinding = 1;
+	writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	writeDescriptor.pImageInfo = &imgInfo;
+	writeDescriptor.pBufferInfo = NULL;
+	vkUpdateDescriptorSets(dev, 1, &writeDescriptor, 0, NULL);
+	writeDescriptor.dstSet = compFrontToBack;
+	writeDescriptor.dstBinding = 2;
+	vkUpdateDescriptorSets(dev, 1, &writeDescriptor, 0, NULL);
+
+	// back to front: read image
+	imgInfo.imageView = frontImgView;
+	writeDescriptor.dstSet = compBackToFront;
+	writeDescriptor.dstBinding = 2;
+	vkUpdateDescriptorSets(dev, 1, &writeDescriptor, 0, NULL);
+	writeDescriptor.dstSet = compFrontToBack;
+	writeDescriptor.dstBinding = 1;
+	vkUpdateDescriptorSets(dev, 1, &writeDescriptor, 0, NULL);
+
+
 	vkDestroyShaderModule(dev, computeModule, NULL);
 	vkDestroyDescriptorSetLayout(dev, setLayout, NULL);
 	vkDestroyPipelineLayout(dev, pipelineLayout, NULL);
@@ -678,6 +772,7 @@ void vkSetup(int monitorIndex) {
 
 	createResources();
 	allocDeviceMemory();
+	createViews();
 	mapBufs();
 	mappedVertices[0].x = -1.0;
 	mappedVertices[0].y = 0.0;
@@ -702,6 +797,8 @@ void vkCleanup() {
 	vkDestroyBuffer(dev, particleBuf, NULL);
 	vkDestroyImage(dev, frontImg, NULL);
 	vkDestroyImage(dev, backImg, NULL);
+	vkDestroyImageView(dev, frontImgView, NULL);
+	vkDestroyImageView(dev, backImgView, NULL);
 	vkFreeMemory(dev, imgsMem, NULL);
 	vkFreeMemory(dev, bufsMem, NULL);
 	vkDeviceWaitIdle(dev);
