@@ -39,6 +39,7 @@ VkDeviceSize particlesOffset;
 vertex *mappedVertices;
 particle *mappedParticles;
 
+VkDescriptorPool descriptorPool;
 VkPipeline computePipeline;
 
 static VkResult result;
@@ -69,8 +70,8 @@ VkShaderModule createModule(const char* fileName) {
 	moduleInfo.codeSize = fileSize;
 	moduleInfo.pCode = contents;
 	VkShaderModule module;
-	VkResult = vkCreateShaderModule(dev, &moduleInfo, NULL, &module);
-	vkFail("Failed to create a shader module\n" + fileName);
+	result = vkCreateShaderModule(dev, &moduleInfo, NULL, &module);
+	vkFail("Failed to create a shader module\n");
 
 	return module;
 }
@@ -561,6 +562,24 @@ void mapBufs() {
 	mappedParticles = (particle*)(mappedMem + particlesOffset);
 }
 
+void createDescriptorPool() {
+	VkDescriptorPoolSize poolSizes[2];
+	poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+	poolSizes[0].descriptorCount = 2;
+	poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	poolSizes[1].descriptorCount = 4;
+
+	VkDescriptorPoolCreateInfo poolInfo;
+	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+	poolInfo.pNext = NULL;
+	poolInfo.flags = 0;
+	poolInfo.maxSets = 2;
+	poolInfo.poolSizeCount = sizeof(poolSizes) / sizeof(VkDescriptorPoolSize);
+	poolInfo.pPoolSizes = poolSizes;
+
+	vkCreateDescriptorPool(dev, &poolInfo, NULL, &descriptorPool);
+}
+
 void createComputePipeline() {
 	// Descriptor set layout
 	VkDescriptorSetLayoutBinding bindings[3];
@@ -670,11 +689,13 @@ void vkSetup(int monitorIndex) {
 	mappedVertices[2].y = 2.0;
 	mappedVertices[2].z = 1.0;
 
+	createDescriptorPool();
 	createComputePipeline();
 	return;
 }
 
 void vkCleanup() {
+	vkDestroyDescriptorPool(dev, descriptorPool, NULL);
 	vkDestroyPipeline(dev, computePipeline, NULL);
 	vkUnmapMemory(dev, bufsMem);
 	vkDestroyBuffer(dev, vertexBuf, NULL);
