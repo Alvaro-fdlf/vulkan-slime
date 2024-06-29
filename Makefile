@@ -23,8 +23,11 @@ drmMaster.o: drmMaster.c drmMaster.h
 dumbBuffers.o: dumbBuffers.c dumbBuffers.h
 	gcc $(PKGFLAGS) $(CFLAGS) -c dumbBuffers.c
 
-vulkanSetup.o: vulkanSetup.c vulkanSetup.h
+vulkanSetup.o: vulkanSetup.c vulkanSetup.h compute.spv
 	gcc $(PKGFLAGS) $(CFLAGS) -c vulkanSetup.c
+
+compute.spv: compute.comp
+	glslangValidator -V compute.comp -o compute.spv
 
 clean:
 	rm *.o output
