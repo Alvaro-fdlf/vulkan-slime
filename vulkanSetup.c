@@ -22,6 +22,12 @@ VkQueueFamilyProperties *queueFamilies;
 static int fd;
 static uint32_t screenWidth, screenHeight, refreshRate;
 
+typedef struct vertex_t {
+	float x;
+	float y;
+	float z;
+} vertex;
+VkBuffer vertexBuf;
 VkImage frontImg, backImg;
 
 static VkResult result;
@@ -448,6 +454,18 @@ void createResources() {
 	vkFail("Failed to create front image\n");
 	result = vkCreateImage(dev, &imgCreateInfo, NULL, &backImg);
 	vkFail("Failed to create back image\n");
+
+	VkBufferCreateInfo bufCreateInfo;
+	bufCreateInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+	bufCreateInfo.pNext = NULL;
+	bufCreateInfo.flags = 0;
+	bufCreateInfo.size = sizeof(vertex) * 3;
+	bufCreateInfo.usage = VK_BUFFER_USAGE_VERTEX_BUFFER_BIT;
+	bufCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+	bufCreateInfo.queueFamilyIndexCount = 0;
+	bufCreateInfo.pQueueFamilyIndices = NULL;
+	result = vkCreateBuffer(dev, &bufCreateInfo, NULL, &vertexBuf);
+	vkFail("Failed to create vertex buffer\n");
 }
 
 void vkSetup(int monitorIndex) {
@@ -469,6 +487,7 @@ void vkSetup(int monitorIndex) {
 }
 
 void vkCleanup() {
+	vkDestroyBuffer(dev, vertexBuf, NULL);
 	vkDestroyImage(dev, frontImg, NULL);
 	vkDestroyImage(dev, backImg, NULL);
 	vkDeviceWaitIdle(dev);
