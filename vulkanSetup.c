@@ -625,12 +625,12 @@ void createComputePipeline() {
 	bindings[0].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 	bindings[0].pImmutableSamplers = NULL;
 	bindings[1].binding = 1;
-	bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; // back image
+	bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; // read image
 	bindings[1].descriptorCount = 1;
 	bindings[1].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 	bindings[1].pImmutableSamplers = NULL;
 	bindings[2].binding = 2;
-	bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; // front image
+	bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; // write image
 	bindings[2].descriptorCount = 1;
 	bindings[2].stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
 	bindings[2].pImmutableSamplers = NULL;
@@ -729,7 +729,7 @@ void createComputePipeline() {
 	writeDescriptor.dstSet = compFrontToBack;
 	vkUpdateDescriptorSets(dev, 1, &writeDescriptor, 0, NULL);
 
-	// back to front: write image, front to back: read image
+	// back to front: read image, front to back: write image
 	imgInfo.imageView = backImgView;
 	imgInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 	writeDescriptor.dstSet = compBackToFront;
@@ -742,7 +742,7 @@ void createComputePipeline() {
 	writeDescriptor.dstBinding = 2;
 	vkUpdateDescriptorSets(dev, 1, &writeDescriptor, 0, NULL);
 
-	// back to front: read image
+	// back to front: write image, front to back: read image
 	imgInfo.imageView = frontImgView;
 	writeDescriptor.dstSet = compBackToFront;
 	writeDescriptor.dstBinding = 2;
