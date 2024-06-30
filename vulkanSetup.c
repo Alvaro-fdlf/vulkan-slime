@@ -756,6 +756,28 @@ void createComputePipeline() {
 	vkDestroyPipelineLayout(dev, pipelineLayout, NULL);
 }
 
+void createGraphicsPipeline() {
+	// Descriptor set layout, has a single image to read from
+	VkDescriptorSetLayoutBinding binding;
+	binding.binding = 0;
+	binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	binding.descriptorCount = 1;
+	binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	binding.pImmutableSamplers = NULL;
+	VkDescriptorSetLayoutCreateInfo setLayoutInfo;
+	setLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+	setLayoutInfo.pNext = NULL;
+	setLayoutInfo.flags = 0;
+	setLayoutInfo.bindingCount = 1;
+	setLayoutInfo.pBindings = &binding;
+
+	VkDescriptorSetLayout setLayout;
+	result = vkCreateDescriptorSetLayout(dev, &setLayoutInfo, NULL, &setLayout);
+	vkFail("Failed to create graphics pipeline descriptor set layout\n");
+
+	vkDestroyDescriptorSetLayout(dev, setLayout, NULL);
+}
+
 void vkSetup(int monitorIndex) {
 	int isLeased;
 	// Do this now, drmIsMaster(fd) may returns false otherwise
@@ -786,6 +808,7 @@ void vkSetup(int monitorIndex) {
 
 	createDescriptorPool();
 	createComputePipeline();
+	createGraphicsPipeline();
 	return;
 }
 
