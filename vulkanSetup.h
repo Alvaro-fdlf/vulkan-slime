@@ -12,7 +12,7 @@ extern VkFramebuffer backFb, frontFb;
 extern VkRenderPass renderPass;
 extern VkDescriptorSet compBackToFront, compFrontToBack, graphicsBack, graphicsFront;
 
-extern VkCommandPool computePool, graphicsPool;
+extern VkCommandPool computePool, graphicsPool, transferPool;
 
 void vkSetup(int monitorIndex);
 void vkCleanup();

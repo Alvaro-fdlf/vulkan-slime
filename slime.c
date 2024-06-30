@@ -88,7 +88,8 @@ int main(int argc, char *argv[]) {
 		vkSetup(monitorIndex);
 
 		VkCommandBuffer graphicsBackToFrontBuf, graphicsFrontToBackBuf,
-				computeBackToFrontBuf, computeFrontToBackBuf;
+				computeBackToFrontBuf, computeFrontToBackBuf,
+				transferBuf;
 
 		// Set up graphics commands
 		VkCommandBufferAllocateInfo commandBufferInfo;
@@ -172,6 +173,10 @@ int main(int argc, char *argv[]) {
 		vkCmdDispatch(computeBackToFrontBuf, cubeSide, cubeSide, cubeSide);
 		vkEndCommandBuffer(computeBackToFrontBuf);
 		vkEndCommandBuffer(computeFrontToBackBuf);
+
+		// Create transfer command buffer
+		commandBufferInfo.commandPool = transferPool;
+		vkAllocateCommandBuffers(dev, &commandBufferInfo, &transferBuf);
 
 		atexit(vkCleanup);
 	} else {
