@@ -1,4 +1,4 @@
-#include "vulkanSetup.h"
+#include <vulkan/vulkan.h>
 #include "drmMaster.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -18,11 +18,11 @@ VkSwapchainKHR swapchain;
 uint32_t imgCount;
 VkImage *images;
 VkExtent2D displayExtent;
-static VkDevice dev;
+VkDevice dev;
 uint32_t queueFamilyCount;
 VkQueueFamilyProperties *queueFamilies;
 static int fd;
-static uint32_t screenWidth, screenHeight, refreshRate;
+uint32_t screenWidth, screenHeight, refreshRate;
 
 typedef struct vertex_t {
 	float x;
@@ -42,7 +42,9 @@ particle *mappedParticles;
 
 VkDescriptorPool descriptorPool;
 VkPipeline computePipeline, graphicsPipeline;
+VkPipelineLayout computePipelineLayout, graphicsPipelineLayout;
 VkFramebuffer backFb, frontFb;
+VkRenderPass renderPass;
 VkDescriptorSet compBackToFront, compFrontToBack, graphicsBack, graphicsFront;
 
 VkCommandPool computePool, graphicsPool, transferPool;
@@ -659,8 +661,7 @@ void createComputePipeline() {
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 	pipelineLayoutInfo.pPushConstantRanges = NULL;
 
-	VkPipelineLayout pipelineLayout;
-	vkCreatePipelineLayout(dev, &pipelineLayoutInfo, NULL, &pipelineLayout);
+	vkCreatePipelineLayout(dev, &pipelineLayoutInfo, NULL, &computePipelineLayout);
 	vkFail("Failed to create compute pipeline layout\n");
 
 	// Compute module
@@ -692,7 +693,7 @@ void createComputePipeline() {
 	pipelineInfo.pNext = NULL;
 	pipelineInfo.flags = 0;
 	pipelineInfo.stage = shaderStageInfo;
-	pipelineInfo.layout = pipelineLayout;
+	pipelineInfo.layout = computePipelineLayout;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex = 0;
 	vkCreateComputePipelines(dev, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &computePipeline);
@@ -758,7 +759,6 @@ void createComputePipeline() {
 
 	vkDestroyShaderModule(dev, computeModule, NULL);
 	vkDestroyDescriptorSetLayout(dev, setLayout, NULL);
-	vkDestroyPipelineLayout(dev, pipelineLayout, NULL);
 }
 
 void createGraphicsPipeline() {
@@ -790,8 +790,7 @@ void createGraphicsPipeline() {
 	pipelineLayoutInfo.pushConstantRangeCount = 0;
 	pipelineLayoutInfo.pPushConstantRanges = NULL;
 
-	VkPipelineLayout pipelineLayout;
-	vkCreatePipelineLayout(dev, &pipelineLayoutInfo, NULL, &pipelineLayout);
+	vkCreatePipelineLayout(dev, &pipelineLayoutInfo, NULL, &graphicsPipelineLayout);
 	vkFail("Failed to create compute pipeline layout\n");
 
 	// Shader modules
@@ -837,7 +836,6 @@ void createGraphicsPipeline() {
 	renderPassInfo.dependencyCount = 0;
 	renderPassInfo.pDependencies = NULL;
 
-	VkRenderPass renderPass;
 	result = vkCreateRenderPass(dev, &renderPassInfo, NULL, &renderPass);
 
 	// Framebuffers
@@ -988,7 +986,7 @@ void createGraphicsPipeline() {
 	pipelineInfo.pDepthStencilState = NULL;
 	pipelineInfo.pColorBlendState = &colorBlendState;
 	pipelineInfo.pDynamicState = NULL;
-	pipelineInfo.layout = pipelineLayout;
+	pipelineInfo.layout = graphicsPipelineLayout;
 	pipelineInfo.renderPass = renderPass;
 	pipelineInfo.subpass = 0;
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
@@ -1030,11 +1028,9 @@ void createGraphicsPipeline() {
 	vkUpdateDescriptorSets(dev, 1, &writeDescriptor, 0, NULL);
 
 
-	vkDestroyRenderPass(dev, renderPass, NULL);
 	vkDestroyShaderModule(dev, vertexModule, NULL);
 	vkDestroyShaderModule(dev, fragmentModule, NULL);
 	vkDestroyDescriptorSetLayout(dev, setLayout, NULL);
-	vkDestroyPipelineLayout(dev, pipelineLayout, NULL);
 }
 
 void createCommandBufferPools() {
@@ -1129,8 +1125,11 @@ void vkCleanup() {
 	vkDestroyCommandPool(dev, graphicsPool, NULL);
 	vkDestroyCommandPool(dev, transferPool, NULL);
 	vkDestroyPipeline(dev, graphicsPipeline, NULL);
+	vkDestroyPipelineLayout(dev, computePipelineLayout, NULL);
+	vkDestroyPipelineLayout(dev, graphicsPipelineLayout, NULL);
 	vkDestroyFramebuffer(dev, backFb, NULL);
 	vkDestroyFramebuffer(dev, frontFb, NULL);
+	vkDestroyRenderPass(dev, renderPass, NULL);
 	vkDestroyDescriptorPool(dev, descriptorPool, NULL);
 	vkDestroyPipeline(dev, computePipeline, NULL);
 	vkUnmapMemory(dev, bufsMem);

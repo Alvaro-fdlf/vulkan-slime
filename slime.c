@@ -81,7 +81,63 @@ int main(int argc, char *argv[]) {
 		abort();
 
 	if (useVulkan) {
-		vkSetup(monitorIndex); // just for testing for now
+		vkSetup(monitorIndex);
+
+		VkCommandBuffer graphicsBackToFrontBuf, graphicsFrontToBackBuf;
+
+		// Set up graphics commands
+		VkCommandBufferAllocateInfo commandBufferInfo;
+		commandBufferInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+		commandBufferInfo.pNext = NULL;
+		commandBufferInfo.commandPool = graphicsPool;
+		commandBufferInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+		commandBufferInfo.commandBufferCount = 1;
+
+		VkCommandBufferBeginInfo commandBufferBeginInfo;
+		commandBufferBeginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		commandBufferBeginInfo.pNext = NULL;
+		commandBufferBeginInfo.flags = 0;
+		commandBufferBeginInfo.pInheritanceInfo = NULL;
+
+		VkRenderPassBeginInfo renderpassBeginInfo;
+		renderpassBeginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderpassBeginInfo.pNext = NULL;
+		renderpassBeginInfo.renderPass = renderPass;
+		renderpassBeginInfo.renderArea.offset.x = 0;
+		renderpassBeginInfo.renderArea.offset.y = 0;
+		renderpassBeginInfo.renderArea.extent.width = screenWidth;
+		renderpassBeginInfo.renderArea.extent.height = screenHeight;
+		renderpassBeginInfo.clearValueCount = 0;
+		renderpassBeginInfo.pClearValues = NULL;
+
+		vkAllocateCommandBuffers(dev, &commandBufferInfo, &graphicsBackToFrontBuf);
+		vkAllocateCommandBuffers(dev, &commandBufferInfo, &graphicsFrontToBackBuf);
+		vkBeginCommandBuffer(graphicsBackToFrontBuf, &commandBufferBeginInfo);
+		vkBeginCommandBuffer(graphicsFrontToBackBuf, &commandBufferBeginInfo);
+		vkCmdBindPipeline(graphicsBackToFrontBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+		vkCmdBindPipeline(graphicsFrontToBackBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+		vkCmdBindDescriptorSets(graphicsBackToFrontBuf,
+					VK_PIPELINE_BIND_POINT_GRAPHICS,
+					graphicsPipelineLayout,
+					0, 1, &graphicsBack,
+					0, NULL);
+		vkCmdBindDescriptorSets(graphicsFrontToBackBuf,
+					VK_PIPELINE_BIND_POINT_GRAPHICS,
+					graphicsPipelineLayout,
+					0, 1, &graphicsFront,
+					0, NULL);
+		renderpassBeginInfo.framebuffer = frontFb;
+		vkCmdBeginRenderPass(graphicsBackToFrontBuf, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+		renderpassBeginInfo.framebuffer = backFb;
+		vkCmdBeginRenderPass(graphicsFrontToBackBuf, &renderpassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+		VkDeviceSize offset = 0;
+		vkCmdBindVertexBuffers(graphicsBackToFrontBuf, 0, 1, &vertexBuf, &offset);
+		vkCmdBindVertexBuffers(graphicsFrontToBackBuf, 0, 1, &vertexBuf, &offset);
+		vkCmdDraw(graphicsBackToFrontBuf, 3, 0, 0, 0);
+		vkCmdDraw(graphicsFrontToBackBuf, 3, 0, 0, 0);
+		vkCmdEndRenderPass(graphicsBackToFrontBuf);
+		vkCmdEndRenderPass(graphicsFrontToBackBuf);
+
 		atexit(vkCleanup);
 	} else {
 		getDumbBuffers(monitorIndex);
