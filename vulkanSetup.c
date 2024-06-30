@@ -46,6 +46,8 @@ VkFramebuffer backFb, frontFb;
 VkDescriptorSet compBackToFront, compFrontToBack, graphicsBack, graphicsFront;
 
 VkCommandPool computePool, graphicsPool, transferPool;
+VkSemaphore commandSem;
+VkFence swapFence, commandFence1, commandFence2;
 
 static VkResult result;
 #define vkFail(msg) \
@@ -1051,6 +1053,36 @@ void createCommandBufferPools() {
 	vkFail("Failed to create transfer command pool\n");
 }
 
+void createSynchronization() {
+	// Semaphore to synchronize command buffer execution across potentially three different queue families
+	VkSemaphoreCreateInfo semInfo;
+	semInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+	semInfo.pNext = NULL;
+	semInfo.flags = 0;
+	vkCreateSemaphore(dev, &semInfo, NULL, &commandSem);
+
+	// one fence to wait for the swapchain to give the next image
+	// two fences for help with command buffer synchronization. It looks like this:
+	// First one takes semaphore and first fence
+	// Second one takes semaphore and second fence
+	// wait for first fence
+	// Third one takes semaphore and first fence
+	// wait for second fence
+	// Foirth one takes semaphore and second fence
+	// wait for first fence
+	// ...
+	//
+	// This is to ensure that at any time there are only two submitted command buffers:
+	// one executing and one waiting
+	VkFenceCreateInfo fenceInfo;
+	fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+	fenceInfo.pNext = NULL;
+	fenceInfo.flags = 0;
+	vkCreateFence(dev, &fenceInfo, NULL, &swapFence);
+	vkCreateFence(dev, &fenceInfo, NULL, &commandFence1);
+	vkCreateFence(dev, &fenceInfo, NULL, &commandFence2);
+}
+
 void vkSetup(int monitorIndex) {
 	int isLeased;
 	// Do this now, drmIsMaster(fd) may returns false otherwise
@@ -1084,10 +1116,15 @@ void vkSetup(int monitorIndex) {
 	createGraphicsPipeline();
 
 	createCommandBufferPools();
+	createSynchronization();
 	return;
 }
 
 void vkCleanup() {
+	vkDestroySemaphore(dev, commandSem, NULL);
+	vkDestroyFence(dev, swapFence, NULL);
+	vkDestroyFence(dev, commandFence1, NULL);
+	vkDestroyFence(dev, commandFence2, NULL);
 	vkDestroyCommandPool(dev, computePool, NULL);
 	vkDestroyCommandPool(dev, graphicsPool, NULL);
 	vkDestroyCommandPool(dev, transferPool, NULL);
