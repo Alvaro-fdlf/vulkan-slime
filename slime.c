@@ -142,6 +142,8 @@ int main(int argc, char *argv[]) {
 		vkCmdDraw(graphicsFrontToBackBuf, 3, 0, 0, 0);
 		vkCmdEndRenderPass(graphicsBackToFrontBuf);
 		vkCmdEndRenderPass(graphicsFrontToBackBuf);
+		vkEndCommandBuffer(graphicsBackToFrontBuf);
+		vkEndCommandBuffer(graphicsFrontToBackBuf);
 
 		// Set up compute commands
 		commandBufferInfo.commandPool = computePool;
@@ -168,6 +170,8 @@ int main(int argc, char *argv[]) {
 			cubeSide++;
 		vkCmdDispatch(computeFrontToBackBuf, cubeSide, cubeSide, cubeSide);
 		vkCmdDispatch(computeBackToFrontBuf, cubeSide, cubeSide, cubeSide);
+		vkEndCommandBuffer(computeBackToFrontBuf);
+		vkEndCommandBuffer(computeFrontToBackBuf);
 
 		atexit(vkCleanup);
 	} else {
