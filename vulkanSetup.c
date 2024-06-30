@@ -789,6 +789,12 @@ void createGraphicsPipeline() {
 	vkCreatePipelineLayout(dev, &pipelineLayoutInfo, NULL, &pipelineLayout);
 	vkFail("Failed to create compute pipeline layout\n");
 
+	// Shader modules
+	VkShaderModule vertexModule = createModule("vertex.spv");
+	VkShaderModule fragmentModule = createModule("fragment.spv");
+
+	vkDestroyShaderModule(dev, vertexModule, NULL);
+	vkDestroyShaderModule(dev, fragmentModule, NULL);
 	vkDestroyDescriptorSetLayout(dev, setLayout, NULL);
 	vkDestroyPipelineLayout(dev, pipelineLayout, NULL);
 }
