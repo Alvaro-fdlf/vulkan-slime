@@ -793,6 +793,49 @@ void createGraphicsPipeline() {
 	VkShaderModule vertexModule = createModule("vertex.spv");
 	VkShaderModule fragmentModule = createModule("fragment.spv");
 
+	// Renderpass
+	VkAttachmentDescription attachDescription;
+	attachDescription.flags = 0;
+	attachDescription.format = VK_FORMAT_R8G8B8A8_UNORM;
+	attachDescription.samples = VK_SAMPLE_COUNT_1_BIT;
+	attachDescription.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	attachDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	attachDescription.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	attachDescription.finalLayout = VK_IMAGE_LAYOUT_GENERAL; // after graphics comes compute
+
+	VkAttachmentReference attachRef;
+	attachRef.attachment = 0;
+	attachRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+	VkSubpassDescription subpassDescription;
+	subpassDescription.flags = 0;
+	subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpassDescription.inputAttachmentCount = 0;
+	subpassDescription.pInputAttachments = NULL;
+	subpassDescription.colorAttachmentCount = 1;
+	subpassDescription.pColorAttachments = &attachRef;
+	subpassDescription.pResolveAttachments = NULL;
+	subpassDescription.pDepthStencilAttachment = NULL;
+	subpassDescription.preserveAttachmentCount = 0;
+	subpassDescription.pPreserveAttachments = NULL;
+
+	VkRenderPassCreateInfo renderPassInfo;
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassInfo.pNext = NULL;
+	renderPassInfo.flags = 0;
+	renderPassInfo.attachmentCount = 1;
+	renderPassInfo.pAttachments = &attachDescription;
+	renderPassInfo.subpassCount = 1;
+	renderPassInfo.pSubpasses = &subpassDescription;
+	renderPassInfo.dependencyCount = 0;
+	renderPassInfo.pDependencies = NULL;
+
+	VkRenderPass renderPass;
+	result = vkCreateRenderPass(dev, &renderPassInfo, NULL, &renderPass);
+
+	vkDestroyRenderPass(dev, renderPass, NULL);
 	vkDestroyShaderModule(dev, vertexModule, NULL);
 	vkDestroyShaderModule(dev, fragmentModule, NULL);
 	vkDestroyDescriptorSetLayout(dev, setLayout, NULL);
