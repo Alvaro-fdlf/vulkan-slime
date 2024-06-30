@@ -835,6 +835,26 @@ void createGraphicsPipeline() {
 	VkRenderPass renderPass;
 	result = vkCreateRenderPass(dev, &renderPassInfo, NULL, &renderPass);
 
+	// Framebuffers
+	VkFramebuffer backFb, frontFb;
+	VkFramebufferCreateInfo fbInfo;
+	fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+	fbInfo.pNext = NULL;
+	fbInfo.flags = 0;
+	fbInfo.renderPass = renderPass;
+	fbInfo.attachmentCount = 1;
+	fbInfo.pAttachments = &backImgView;
+	fbInfo.width = screenWidth;
+	fbInfo.height = screenHeight;
+	fbInfo.layers = 1;
+	result = vkCreateFramebuffer(dev, &fbInfo, NULL, &backFb);
+	vkFail("Failed to create back framebuffer\n");
+	fbInfo.pAttachments = &frontImgView;
+	result = vkCreateFramebuffer(dev, &fbInfo, NULL, &frontFb);
+	vkFail("Failed to create front framebuffer\n");
+
+	vkDestroyFramebuffer(dev, backFb, NULL);
+	vkDestroyFramebuffer(dev, frontFb, NULL);
 	vkDestroyRenderPass(dev, renderPass, NULL);
 	vkDestroyShaderModule(dev, vertexModule, NULL);
 	vkDestroyShaderModule(dev, fragmentModule, NULL);
