@@ -43,7 +43,7 @@ particle *mappedParticles;
 VkDescriptorPool descriptorPool;
 VkPipeline computePipeline, graphicsPipeline;
 VkFramebuffer backFb, frontFb;
-VkDescriptorSet compBackToFront, compFrontToBack;
+VkDescriptorSet compBackToFront, compFrontToBack, graphicsBack, graphicsFront;
 
 static VkResult result;
 #define vkFail(msg) \
@@ -603,13 +603,13 @@ void createDescriptorPool() {
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	poolSizes[0].descriptorCount = 2;
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	poolSizes[1].descriptorCount = 4;
+	poolSizes[1].descriptorCount = 6;
 
 	VkDescriptorPoolCreateInfo poolInfo;
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
 	poolInfo.pNext = NULL;
 	poolInfo.flags = 0;
-	poolInfo.maxSets = 2;
+	poolInfo.maxSets = 4;
 	poolInfo.poolSizeCount = sizeof(poolSizes) / sizeof(VkDescriptorPoolSize);
 	poolInfo.pPoolSizes = poolSizes;
 
@@ -701,9 +701,9 @@ void createComputePipeline() {
 	allocInfo.descriptorSetCount = 1;
 	allocInfo.pSetLayouts = &setLayout;
 	result = vkAllocateDescriptorSets(dev, &allocInfo, &compBackToFront);
-	vkFail("Failed to create compute descriptor layout\n");
+	vkFail("Failed to create compute descriptor set\n");
 	result = vkAllocateDescriptorSets(dev, &allocInfo, &compFrontToBack);
-	vkFail("Failed to create compute descriptor layout\n");
+	vkFail("Failed to create compute descriptor set\n");
 
 	// Binding to descriptor sets
 	VkWriteDescriptorSet writeDescriptor;
@@ -990,6 +990,41 @@ void createGraphicsPipeline() {
 	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
 	pipelineInfo.basePipelineIndex = 0;
 	result = vkCreateGraphicsPipelines(dev, VK_NULL_HANDLE, 1, &pipelineInfo, NULL, &graphicsPipeline);
+
+	// Descriptor sets
+	VkDescriptorSetAllocateInfo allocInfo;
+	allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+	allocInfo.pNext = NULL;
+	allocInfo.descriptorPool = descriptorPool;
+	allocInfo.descriptorSetCount = 1;
+	allocInfo.pSetLayouts = &setLayout;
+	result = vkAllocateDescriptorSets(dev, &allocInfo, &graphicsBack);
+	vkFail("Failed to create graphics descriptor set\n");
+	result = vkAllocateDescriptorSets(dev, &allocInfo, &graphicsFront);
+	vkFail("Failed to create graphics descriptor set\n");
+
+	// Binding to descriptor sets
+	VkWriteDescriptorSet writeDescriptor;
+	VkDescriptorImageInfo imgInfo;
+	imgInfo.sampler = VK_NULL_HANDLE;
+	imgInfo.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+	writeDescriptor.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+	writeDescriptor.pNext = NULL;
+	writeDescriptor.dstArrayElement = 0;
+	writeDescriptor.descriptorCount = 1;
+	writeDescriptor.pTexelBufferView = NULL;
+	writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	writeDescriptor.pBufferInfo = NULL;
+	writeDescriptor.dstBinding = 0;
+	writeDescriptor.pImageInfo = &imgInfo;
+
+	imgInfo.imageView = backImgView;
+	writeDescriptor.dstSet = graphicsBack;
+	vkUpdateDescriptorSets(dev, 1, &writeDescriptor, 0, NULL);
+	imgInfo.imageView = frontImgView;
+	writeDescriptor.dstSet = graphicsFront;
+	vkUpdateDescriptorSets(dev, 1, &writeDescriptor, 0, NULL);
+
 
 	vkDestroyRenderPass(dev, renderPass, NULL);
 	vkDestroyShaderModule(dev, vertexModule, NULL);
