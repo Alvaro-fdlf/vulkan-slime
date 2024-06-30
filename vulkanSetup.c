@@ -45,6 +45,8 @@ VkPipeline computePipeline, graphicsPipeline;
 VkFramebuffer backFb, frontFb;
 VkDescriptorSet compBackToFront, compFrontToBack, graphicsBack, graphicsFront;
 
+VkCommandPool computePool, graphicsPool, transferPool;
+
 static VkResult result;
 #define vkFail(msg) \
 	if (result != VK_SUCCESS) {\
@@ -1033,6 +1035,22 @@ void createGraphicsPipeline() {
 	vkDestroyPipelineLayout(dev, pipelineLayout, NULL);
 }
 
+void createCommandBufferPools() {
+	VkCommandPoolCreateInfo poolInfo;
+	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	poolInfo.pNext = NULL;
+	poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+	poolInfo.queueFamilyIndex = qFamComputeIndex;
+	result = vkCreateCommandPool(dev, &poolInfo, NULL, &computePool);
+	vkFail("Failed to create compute command pool\n");
+	poolInfo.queueFamilyIndex = qFamGraphicsIndex;
+	result = vkCreateCommandPool(dev, &poolInfo, NULL, &graphicsPool);
+	vkFail("Failed to create graphics command pool\n");
+	poolInfo.queueFamilyIndex = qFamTransferIndex;
+	result = vkCreateCommandPool(dev, &poolInfo, NULL, &transferPool);
+	vkFail("Failed to create transfer command pool\n");
+}
+
 void vkSetup(int monitorIndex) {
 	int isLeased;
 	// Do this now, drmIsMaster(fd) may returns false otherwise
@@ -1064,10 +1082,15 @@ void vkSetup(int monitorIndex) {
 	createDescriptorPool();
 	createComputePipeline();
 	createGraphicsPipeline();
+
+	createCommandBufferPools();
 	return;
 }
 
 void vkCleanup() {
+	vkDestroyCommandPool(dev, computePool, NULL);
+	vkDestroyCommandPool(dev, graphicsPool, NULL);
+	vkDestroyCommandPool(dev, transferPool, NULL);
 	vkDestroyPipeline(dev, graphicsPipeline, NULL);
 	vkDestroyFramebuffer(dev, backFb, NULL);
 	vkDestroyFramebuffer(dev, frontFb, NULL);
