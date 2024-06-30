@@ -6,13 +6,13 @@ extern uint32_t screenWidth, screenHeight, refreshRate;
 
 extern VkBuffer vertexBuf;
 
-extern VkPipelineLayout graphicsPipelineLayout;
-extern VkPipeline graphicsPipeline;
+extern VkPipelineLayout computePipelineLayout, graphicsPipelineLayout;
+extern VkPipeline computePipeline, graphicsPipeline;
 extern VkFramebuffer backFb, frontFb;
 extern VkRenderPass renderPass;
-extern VkDescriptorSet graphicsBack, graphicsFront;
+extern VkDescriptorSet compBackToFront, compFrontToBack, graphicsBack, graphicsFront;
 
-extern VkCommandPool graphicsPool;
+extern VkCommandPool computePool, graphicsPool;
 
 void vkSetup(int monitorIndex);
 void vkCleanup();

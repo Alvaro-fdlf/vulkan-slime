@@ -32,6 +32,10 @@ unsigned int blurDivide = 25; // should be set to the sum of elements of blurker
 /*
  *
  */
+// Doesn't actually change the compute shader behavior, just SHOULD be changed to reflect it
+const int localGroupSize = 4*4*8;
+const int particlesPerInvocation = 1;
+const int particlesPerGroup = particlesPerInvocation * localGroupSize;
 
 
 #define pixel(x, y) ((y)*xSize + (x))
@@ -83,7 +87,8 @@ int main(int argc, char *argv[]) {
 	if (useVulkan) {
 		vkSetup(monitorIndex);
 
-		VkCommandBuffer graphicsBackToFrontBuf, graphicsFrontToBackBuf;
+		VkCommandBuffer graphicsBackToFrontBuf, graphicsFrontToBackBuf,
+				computeBackToFrontBuf, computeFrontToBackBuf;
 
 		// Set up graphics commands
 		VkCommandBufferAllocateInfo commandBufferInfo;
@@ -137,6 +142,32 @@ int main(int argc, char *argv[]) {
 		vkCmdDraw(graphicsFrontToBackBuf, 3, 0, 0, 0);
 		vkCmdEndRenderPass(graphicsBackToFrontBuf);
 		vkCmdEndRenderPass(graphicsFrontToBackBuf);
+
+		// Set up compute commands
+		commandBufferInfo.commandPool = computePool;
+		vkAllocateCommandBuffers(dev, &commandBufferInfo, &computeBackToFrontBuf);
+		vkAllocateCommandBuffers(dev, &commandBufferInfo, &computeFrontToBackBuf);
+		vkBeginCommandBuffer(computeBackToFrontBuf, &commandBufferBeginInfo);
+		vkBeginCommandBuffer(computeFrontToBackBuf, &commandBufferBeginInfo);
+		vkCmdBindPipeline(computeBackToFrontBuf, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
+		vkCmdBindPipeline(computeFrontToBackBuf, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
+		vkCmdBindDescriptorSets(computeBackToFrontBuf,
+					VK_PIPELINE_BIND_POINT_COMPUTE,
+					computePipelineLayout,
+					0, 1, &compBackToFront,
+					0, NULL);
+		vkCmdBindDescriptorSets(computeFrontToBackBuf,
+					VK_PIPELINE_BIND_POINT_COMPUTE,
+					computePipelineLayout,
+					0, 1, &compFrontToBack,
+					0, NULL);
+
+		int localGroupsNeeded = particleCount / particlesPerGroup;
+		int cubeSide = 1;
+		while (cubeSide*cubeSide*cubeSide < localGroupsNeeded) // I don't know if this dumb or not
+			cubeSide++;
+		vkCmdDispatch(computeFrontToBackBuf, cubeSide, cubeSide, cubeSide);
+		vkCmdDispatch(computeBackToFrontBuf, cubeSide, cubeSide, cubeSide);
 
 		atexit(vkCleanup);
 	} else {
