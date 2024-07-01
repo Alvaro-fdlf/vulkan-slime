@@ -134,6 +134,7 @@ int main(int argc, char *argv[]) {
 		// First create setup command buffer to be executed once
 		// When the loop starts the graphics command buffer should see the images as if they
 		// had just come from a previous finished loop
+		// Also move all swapchain images from undefined to present layout
 		vkAllocateCommandBuffers(dev, &commandBufferInfo, &setupBuf);
 		vkBeginCommandBuffer(setupBuf, &commandBufferBeginInfo);
 		imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -150,6 +151,15 @@ int main(int argc, char *argv[]) {
 		vkCmdPipelineBarrier(setupBuf,
 					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
 					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
+
+		imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+		imageMemBarrier.dstQueueFamilyIndex = qFamGraphicsIndex;
+		for (uint32_t i=0; i<imgCount; i++) {
+			imageMemBarrier.image = images[i];
+			vkCmdPipelineBarrier(setupBuf,
+					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
+		}
 		vkEndCommandBuffer(setupBuf);
 
 		vkAllocateCommandBuffers(dev, &commandBufferInfo, &graphicsBackToFrontBuf);
@@ -248,9 +258,29 @@ int main(int argc, char *argv[]) {
 		vkEndCommandBuffer(computeBackToFrontBuf);
 		vkEndCommandBuffer(computeFrontToBackBuf);
 
-		// Create transfer command buffer
+		// Create transfer command buffer and copy region struct
 		commandBufferInfo.commandPool = transferPool;
 		vkAllocateCommandBuffers(dev, &commandBufferInfo, &transferBuf);
+
+		VkImageSubresourceLayers subresource;
+		subresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		subresource.mipLevel = 0;
+		subresource.baseArrayLayer = 0;
+		subresource.layerCount = 1;
+
+		VkOffset3D copyOffset;
+		copyOffset.x = 0;
+		copyOffset.y = 0;
+		copyOffset.z = 0;
+
+		VkImageCopy copyRegion;
+		copyRegion.srcSubresource = subresource;
+		copyRegion.srcOffset = copyOffset;
+		copyRegion.dstSubresource = subresource;
+		copyRegion.dstOffset = copyOffset;
+		copyRegion.extent.width = screenWidth;
+		copyRegion.extent.height = screenHeight;
+		copyRegion.extent.depth = 1;
 
 		VkSubmitInfo submitInfo;
 		VkPipelineStageFlags stageFlags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
@@ -289,8 +319,46 @@ int main(int argc, char *argv[]) {
 			vkResetFences(dev, 1, &swapFence);
 			vkResetFences(dev, 1, &commandFence1);
 
+			// Transfer and present
+			// First move backImg and swapchain image to transfer layouts, then transfer, then move
+			// swapchain image back to present layout
+			vkResetCommandBuffer(transferBuf, 0);
+			vkBeginCommandBuffer(transferBuf, &commandBufferBeginInfo);
+			imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+			imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+			imageMemBarrier.srcQueueFamilyIndex = qFamComputeIndex;
+			imageMemBarrier.dstQueueFamilyIndex = qFamTransferIndex;
+			imageMemBarrier.image = backImg;
+			vkCmdPipelineBarrier(transferBuf,
+					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
+			imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			imageMemBarrier.srcQueueFamilyIndex = qFamGraphicsIndex;
+			imageMemBarrier.dstQueueFamilyIndex = qFamGraphicsIndex;
+			imageMemBarrier.image = images[imgIndex];
+			vkCmdPipelineBarrier(transferBuf,
+					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
+			vkCmdCopyImage(transferBuf, backImg, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+					images[imgIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+			imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+			imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+			imageMemBarrier.srcQueueFamilyIndex = qFamGraphicsIndex;
+			imageMemBarrier.dstQueueFamilyIndex = qFamGraphicsIndex;
+			imageMemBarrier.image = images[imgIndex];
+			vkCmdPipelineBarrier(transferBuf,
+					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
+			vkEndCommandBuffer(transferBuf);
+
+			submitInfo.pCommandBuffers = &transferBuf;
+			vkQueueSubmit(transferQueue, 1, &submitInfo, commandFence1);
+
 			vkWaitForFences(dev, 1, &commandFence2, VK_TRUE, ~0ull);
 			vkResetFences(dev, 1, &commandFence2);
+			vkWaitForFences(dev, 1, &commandFence1, VK_TRUE, ~0ull);
+			vkResetFences(dev, 1, &commandFence1);
 		}
 		atexit(vkCleanup);
 	} else {

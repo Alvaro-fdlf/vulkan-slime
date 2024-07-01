@@ -2,6 +2,7 @@
 
 extern uint32_t qFamGraphicsIndex, qFamComputeIndex, qFamTransferIndex;
 extern VkSwapchainKHR swapchain;
+extern uint32_t imgCount;
 extern VkImage *images;
 extern VkDevice dev;
 
