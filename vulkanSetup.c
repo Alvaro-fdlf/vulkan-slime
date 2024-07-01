@@ -21,6 +21,7 @@ VkExtent2D displayExtent;
 VkDevice dev;
 uint32_t queueFamilyCount;
 VkQueueFamilyProperties *queueFamilies;
+VkQueue graphicsQueue, computeQueue, transferQueue;
 static int fd;
 uint32_t screenWidth, screenHeight, refreshRate;
 
@@ -346,6 +347,10 @@ void createLogicalDevice() {
 	for (unsigned int i=0; i<queueFamilyCount; i++) {
 		free((void *) queueInfos[i].pQueuePriorities);
 	}
+
+	vkGetDeviceQueue(dev, qFamGraphicsIndex, 0, &graphicsQueue);
+	vkGetDeviceQueue(dev, qFamComputeIndex, 0, &computeQueue);
+	vkGetDeviceQueue(dev, qFamTransferIndex, 0, &transferQueue);
 }
 
 void createDisplaySurface(int monitorIndex) {

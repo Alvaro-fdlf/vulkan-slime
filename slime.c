@@ -89,7 +89,8 @@ int main(int argc, char *argv[]) {
 
 		VkCommandBuffer graphicsBackToFrontBuf, graphicsFrontToBackBuf,
 				computeBackToFrontBuf, computeFrontToBackBuf,
-				transferBuf;
+				transferBuf,
+				setupBuf;
 
 		// Set up graphics commands
 		VkCommandBufferAllocateInfo commandBufferInfo;
@@ -116,10 +117,81 @@ int main(int argc, char *argv[]) {
 		renderpassBeginInfo.clearValueCount = 0;
 		renderpassBeginInfo.pClearValues = NULL;
 
+		VkImageSubresourceRange subResourceRange;
+		subResourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		subResourceRange.baseMipLevel = 0;
+		subResourceRange.levelCount = 1;
+		subResourceRange.baseArrayLayer = 0;
+		subResourceRange.layerCount = 1;
+
+		VkImageMemoryBarrier imageMemBarrier;
+		imageMemBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+		imageMemBarrier.pNext = NULL;
+		imageMemBarrier.srcAccessMask = 0;
+		imageMemBarrier.dstAccessMask = 0;
+		imageMemBarrier.subresourceRange = subResourceRange;
+
+		// First create setup command buffer to be executed once
+		// When the loop starts the graphics command buffer should see the images as if they
+		// had just come from a previous finished loop
+		vkAllocateCommandBuffers(dev, &commandBufferInfo, &setupBuf);
+		vkBeginCommandBuffer(setupBuf, &commandBufferBeginInfo);
+		imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+		imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+		imageMemBarrier.srcQueueFamilyIndex = 0;
+		imageMemBarrier.dstQueueFamilyIndex = qFamTransferIndex;
+		imageMemBarrier.image = frontImg;
+		vkCmdPipelineBarrier(setupBuf,
+					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
+		imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		imageMemBarrier.dstQueueFamilyIndex = qFamComputeIndex;
+		imageMemBarrier.image = backImg;
+		vkCmdPipelineBarrier(setupBuf,
+					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
+		vkEndCommandBuffer(setupBuf);
+
 		vkAllocateCommandBuffers(dev, &commandBufferInfo, &graphicsBackToFrontBuf);
 		vkAllocateCommandBuffers(dev, &commandBufferInfo, &graphicsFrontToBackBuf);
 		vkBeginCommandBuffer(graphicsBackToFrontBuf, &commandBufferBeginInfo);
 		vkBeginCommandBuffer(graphicsFrontToBackBuf, &commandBufferBeginInfo);
+		imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+		imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		imageMemBarrier.srcQueueFamilyIndex = qFamTransferIndex;
+		imageMemBarrier.dstQueueFamilyIndex = qFamGraphicsIndex;
+		imageMemBarrier.image = frontImg;
+		vkCmdPipelineBarrier(graphicsBackToFrontBuf,
+					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
+		imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+		imageMemBarrier.srcQueueFamilyIndex = qFamComputeIndex;
+		imageMemBarrier.dstQueueFamilyIndex = qFamGraphicsIndex;
+		imageMemBarrier.image = backImg;
+		vkCmdPipelineBarrier(graphicsBackToFrontBuf,
+					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
+
+		imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+		imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+		imageMemBarrier.srcQueueFamilyIndex = qFamTransferIndex;
+		imageMemBarrier.dstQueueFamilyIndex = qFamGraphicsIndex;
+		imageMemBarrier.image = backImg;
+		vkCmdPipelineBarrier(graphicsFrontToBackBuf,
+					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
+		imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+		imageMemBarrier.srcQueueFamilyIndex = qFamComputeIndex;
+		imageMemBarrier.dstQueueFamilyIndex = qFamGraphicsIndex;
+		imageMemBarrier.image = frontImg;
+		vkCmdPipelineBarrier(graphicsFrontToBackBuf,
+					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
+
+
+
 		vkCmdBindPipeline(graphicsBackToFrontBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 		vkCmdBindPipeline(graphicsFrontToBackBuf, VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
 		vkCmdBindDescriptorSets(graphicsBackToFrontBuf,
@@ -178,6 +250,36 @@ int main(int argc, char *argv[]) {
 		commandBufferInfo.commandPool = transferPool;
 		vkAllocateCommandBuffers(dev, &commandBufferInfo, &transferBuf);
 
+		VkSubmitInfo submitInfo;
+		VkPipelineStageFlags stageFlags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.pNext = NULL;
+		submitInfo.waitSemaphoreCount = 0;
+		submitInfo.pWaitSemaphores = NULL;
+		submitInfo.pWaitDstStageMask = &stageFlags;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &commandSem;
+
+		submitInfo.pCommandBuffers = &setupBuf;
+		vkQueueSubmit(graphicsQueue, 1, &submitInfo, commandFence1);
+		vkWaitForFences(dev, 1, &commandFence1, VK_TRUE, ~0ull);
+		vkResetFences(dev, 1, &commandFence1);
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &commandSem;
+		while (true) {
+			// Swap front and back
+			swap(frontImg, backImg);
+			swap(graphicsBackToFrontBuf, graphicsFrontToBackBuf);
+			swap(computeBackToFrontBuf, computeFrontToBackBuf);
+
+			// Submit graphics command buffer
+			submitInfo.pCommandBuffers = &graphicsFrontToBackBuf;
+			vkQueueSubmit(graphicsQueue, 1, &submitInfo, commandFence1);
+			vkWaitForFences(dev, 1, &commandFence1, VK_TRUE, ~0ull);
+			vkResetFences(dev, 1, &commandFence1);
+			exit(0); // for now
+		}
 		atexit(vkCleanup);
 	} else {
 		getDumbBuffers(monitorIndex);
