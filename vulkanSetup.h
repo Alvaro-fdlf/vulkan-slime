@@ -11,6 +11,10 @@ extern uint32_t screenWidth, screenHeight, refreshRate;
 
 extern VkBuffer vertexBuf;
 extern VkImage frontImg, backImg;
+typedef struct {
+	float posX, posY, dirX, dirY, angle;
+} vkParticle;
+extern vkParticle *mappedParticles;
 
 extern VkPipelineLayout computePipelineLayout, graphicsPipelineLayout;
 extern VkPipeline computePipeline, graphicsPipeline;

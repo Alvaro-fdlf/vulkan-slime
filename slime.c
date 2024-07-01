@@ -76,6 +76,14 @@ void cleanUpOtherBuffers() {
 	free(tempBuf2);
 }
 
+void genVkParticle(vkParticle *p) {
+	p->posX = rand() % (screenWidth/2) + screenWidth/4;
+	p->posY = rand() % (screenHeight/2) + screenHeight/4;
+	p->angle = (float) rand() / RAND_MAX * 2 * M_PI;
+	p->dirX = particleSpeed * cos(p->angle);
+	p->dirY = particleSpeed * sin(p->angle);
+}
+
 int main(int argc, char *argv[]) {
 	struct sigaction sigact;
 	sigact.sa_handler = sigintHandler;
@@ -86,6 +94,10 @@ int main(int argc, char *argv[]) {
 
 	if (useVulkan) {
 		vkSetup(monitorIndex);
+
+		for (int i=0; i<particleCount; i++) {
+			genVkParticle(mappedParticles + i);
+		}
 
 		VkCommandBuffer graphicsBackToFrontBuf, graphicsFrontToBackBuf,
 				computeBackToFrontBuf, computeFrontToBackBuf,

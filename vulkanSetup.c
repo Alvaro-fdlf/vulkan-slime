@@ -32,14 +32,14 @@ typedef struct vertex_t {
 } vertex;
 typedef struct {
 	float posX, posY, dirX, dirY, angle;
-} particle;
+} vkParticle;
 extern const int particleCount;
 VkBuffer vertexBuf, particleBuf;
 VkImage frontImg, backImg;
 VkImageView frontImgView, backImgView;
 VkDeviceSize particlesOffset;
 vertex *mappedVertices;
-particle *mappedParticles;
+vkParticle *mappedParticles;
 
 VkDescriptorPool descriptorPool;
 VkPipeline computePipeline, graphicsPipeline;
@@ -524,7 +524,7 @@ void createResources() {
 	result = vkCreateBuffer(dev, &bufCreateInfo, NULL, &vertexBuf);
 	vkFail("Failed to create vertex buffer\n");
 
-	bufCreateInfo.size = sizeof(particle) * particleCount;
+	bufCreateInfo.size = sizeof(vkParticle) * particleCount;
 	bufCreateInfo.usage = VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 	result = vkCreateBuffer(dev, &bufCreateInfo, NULL, &particleBuf);
 	vkFail("Failed to create particle buffer\n");
@@ -608,7 +608,7 @@ void mapBufs() {
 	void *mappedMem;
 	vkMapMemory(dev, bufsMem, 0, VK_WHOLE_SIZE, 0, &mappedMem);
 	mappedVertices = (vertex*)mappedMem;
-	mappedParticles = (particle*)(mappedMem + particlesOffset);
+	mappedParticles = (vkParticle*)(mappedMem + particlesOffset);
 }
 
 void createDescriptorPool() {
