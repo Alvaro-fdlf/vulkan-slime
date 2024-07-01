@@ -694,6 +694,8 @@ void createComputePipeline() {
 		float pG;
 		float pB;
 		unsigned int randSeed;
+		unsigned int scrW;
+		unsigned int scrH;
 	} spec;
 	spec.pCount = particleCount;
 	spec.pSpeed = particleSpeed;
@@ -704,10 +706,10 @@ void createComputePipeline() {
 	spec.pG = (float)(particleColor/0x100 % 0x100) / 0xFF;
 	spec.pB = (float)(particleColor % 0x100) / 0XFF;
 	spec.randSeed = vkRandSeed;
-	printf("%d, %d, %d\n", particleColor/0x10000 % 0x100, particleColor/0x100 % 0x100, particleColor % 0x100);
-	printf("%f, %f, %f\n", spec.pR, spec.pG, spec.pB);
+	spec.scrW = screenWidth;
+	spec.scrH = screenHeight;
 
-	VkSpecializationMapEntry specializationEntries[9];
+	VkSpecializationMapEntry specializationEntries[11];
 	specializationEntries[0].constantID = 0;
 	specializationEntries[0].offset = offsetof(struct specConst, pCount);
 	specializationEntries[0].size = sizeof(int);
@@ -735,9 +737,15 @@ void createComputePipeline() {
 	specializationEntries[8].constantID = 8;
 	specializationEntries[8].offset = offsetof(struct specConst, randSeed);
 	specializationEntries[8].size = sizeof(unsigned int);
+	specializationEntries[9].constantID = 9;
+	specializationEntries[9].offset = offsetof(struct specConst, scrW);
+	specializationEntries[9].size = sizeof(unsigned int);
+	specializationEntries[10].constantID = 10;
+	specializationEntries[10].offset = offsetof(struct specConst, scrH);
+	specializationEntries[10].size = sizeof(unsigned int);
 
 	VkSpecializationInfo specializationInfo;
-	specializationInfo.mapEntryCount = 9;
+	specializationInfo.mapEntryCount = 11;
 	specializationInfo.pMapEntries = specializationEntries;
 	specializationInfo.dataSize = sizeof(struct specConst);
 	specializationInfo.pData = &spec;

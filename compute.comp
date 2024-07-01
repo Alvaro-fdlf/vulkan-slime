@@ -10,6 +10,8 @@ layout (constant_id = 5) const float particleR = 1.0;
 layout (constant_id = 6) const float particleG = 1.0;
 layout (constant_id = 7) const float particleB = 1.0;
 layout (constant_id = 8) const uint vkRandSeed = 1;
+layout (constant_id = 9) const uint screenWidth = 1920;
+layout (constant_id = 10) const uint screenHeight = 1080;
 
 struct particleData {
 	float posX;
@@ -24,6 +26,9 @@ layout (set = 0, binding = 0) buffer Particles {
 layout (set = 0, binding = 1, rgba8) uniform writeonly image2D backImg;
 layout (set = 0, binding = 2, rgba8) uniform readonly image2D frontImg;
 
+#define M_PI 3.14159265
+#define p (particles.p[particleIndex])
+
 void main(void) {
 	uvec3 numInstancesInGlobal = uvec3(4,4,8) * gl_NumWorkGroups;
 	uint particleIndex =
@@ -32,11 +37,65 @@ void main(void) {
 		gl_GlobalInvocationID.x;
 	if (particleIndex >= particleCount) return;
 
+	// Movement
+	// Steer towards highest luma pixel some steps away in 3 directions
+	float angles[3] = {p.angle - steerAmplitude, p.angle, p.angle + steerAmplitude};
+	vec3 pixels[3];
+	float lumas[3] = {0, 0, 0};
+	for (int i=0; i<3; i++) {
+		int lookPosX = int(p.posX + particleSpeed * float(steerLength) * cos(angles[i]));
+		int lookPosY = int(p.posY + particleSpeed * float(steerLength) * sin(angles[i]));
+		if (lookPosX < 0 || lookPosX > screenWidth-1 || lookPosY < 0 || lookPosY > screenHeight-1)
+			continue;
+		pixels[i] = imageLoad(frontImg, ivec2(lookPosX, lookPosY)).rgb;
+		lumas[i] += pixels[i].r * 0.0722;
+		lumas[i] += pixels[i].g * 0.7152;
+		lumas[i] += pixels[i].b * 0.2126;
+	}
+	if (lumas[0] > lumas[1] && lumas[0] > lumas[2]) {
+		p.angle = angles[0];
+	} else if (lumas[2] > lumas[0] && lumas[2] > lumas[1]) {
+		p.angle = angles[2];
+	} else if (lumas[1] > 0.3) { // promotes more complex looking paths and more new paths
+		if (lumas[0] > lumas[2])
+			p.angle = angles[0];
+		else
+			p.angle = angles[2];
+	}
+
+	// Change direction randomly a bit
+	// TODO
+	p.dirX = particleSpeed * cos(p.angle);
+	p.dirY = particleSpeed * sin(p.angle);
+
+	p.posX += p.dirX;
+	p.posY += p.dirY;
+	if (p.posX < 0) {
+		p.posX = abs(p.posX);
+		p.dirX *= -1;
+		p.angle = (p.angle + M_PI) * -1;
+	}
+	if (p.posX > screenWidth-1) {
+		p.posX = screenWidth-1 - abs(screenWidth-1 - p.posX);
+		p.dirX *= -1;
+		p.angle = (p.angle + M_PI) * -1;
+	}
+	if (p.posY < 0) {
+		p.posY = abs(p.posY);
+		p.dirY *= -1;
+		p.angle = p.angle * -1;
+	}
+	if (p.posY > screenHeight-1) {
+		p.posY = screenHeight-1 - abs(screenHeight-1 - p.posY);
+		p.dirY *= -1;
+		p.angle = p.angle * -1;
+	}
+
 	// For some reason it acts as bgra instead of rgba
 	// might be a problem with the transfer from backImg to swapchain
 	vec4 pixel = {particleB, particleG, particleR, 1.0};
 	ivec2 pos;
-	pos.x = int(round(particles.p[particleIndex].posX));
-	pos.y = int(round(particles.p[particleIndex].posY));
+	pos.x = int(round(p.posX));
+	pos.y = int(round(p.posY));
 	imageStore(backImg, pos, pixel);
 }
