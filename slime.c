@@ -219,6 +219,8 @@ int main(int argc, char *argv[]) {
 		vkEndCommandBuffer(graphicsFrontToBackBuf);
 
 		// Set up compute commands
+		// The front image is already in general layout, and the back image moves to general
+		// beacuse of the renderpass final layout
 		commandBufferInfo.commandPool = computePool;
 		vkAllocateCommandBuffers(dev, &commandBufferInfo, &computeBackToFrontBuf);
 		vkAllocateCommandBuffers(dev, &commandBufferInfo, &computeFrontToBackBuf);
@@ -276,6 +278,8 @@ int main(int argc, char *argv[]) {
 			// Submit graphics command buffer
 			submitInfo.pCommandBuffers = &graphicsFrontToBackBuf;
 			vkQueueSubmit(graphicsQueue, 1, &submitInfo, commandFence1);
+			submitInfo.pCommandBuffers = &computeFrontToBackBuf;
+			vkQueueSubmit(computeQueue, 1, &submitInfo, commandFence2);
 			vkWaitForFences(dev, 1, &commandFence1, VK_TRUE, ~0ull);
 			vkResetFences(dev, 1, &commandFence1);
 			exit(0); // for now
