@@ -24,3 +24,5 @@ extern VkFence swapFence, commandFence1, commandFence2;
 
 void vkSetup(int monitorIndex);
 void vkCleanup();
+
+extern VkResult (*vkQueuePresent) (VkQueue queue, const VkPresentInfoKHR *pPresentInfo);

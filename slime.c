@@ -290,15 +290,13 @@ int main(int argc, char *argv[]) {
 		submitInfo.pWaitSemaphores = NULL;
 		submitInfo.pWaitDstStageMask = &stageFlags;
 		submitInfo.commandBufferCount = 1;
-		submitInfo.signalSemaphoreCount = 1;
-		submitInfo.pSignalSemaphores = &commandSem;
 
 		submitInfo.pCommandBuffers = &setupBuf;
 		vkQueueSubmit(graphicsQueue, 1, &submitInfo, commandFence1);
 		vkWaitForFences(dev, 1, &commandFence1, VK_TRUE, ~0ull);
 		vkResetFences(dev, 1, &commandFence1);
-		submitInfo.waitSemaphoreCount = 1;
-		submitInfo.pWaitSemaphores = &commandSem;
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &commandSem;
 		while (true) {
 			// Swap front and back
 			swap(frontImg, backImg);
@@ -306,8 +304,12 @@ int main(int argc, char *argv[]) {
 			swap(computeBackToFrontBuf, computeFrontToBackBuf);
 
 			// Submit graphics and compute command buffers
+			submitInfo.waitSemaphoreCount = 0;
+			submitInfo.pWaitSemaphores = NULL;
 			submitInfo.pCommandBuffers = &graphicsFrontToBackBuf;
 			vkQueueSubmit(graphicsQueue, 1, &submitInfo, commandFence1);
+			submitInfo.waitSemaphoreCount = 1;
+			submitInfo.pWaitSemaphores = &commandSem;
 			submitInfo.pCommandBuffers = &computeFrontToBackBuf;
 			vkQueueSubmit(computeQueue, 1, &submitInfo, commandFence2);
 
@@ -319,9 +321,10 @@ int main(int argc, char *argv[]) {
 			vkResetFences(dev, 1, &swapFence);
 			vkResetFences(dev, 1, &commandFence1);
 
-			// Transfer and present
+			// Transfer to swapchain image
 			// First move backImg and swapchain image to transfer layouts, then transfer, then move
 			// swapchain image back to present layout
+			// wait for second command buffer execution before continuing
 			vkResetCommandBuffer(transferBuf, 0);
 			vkBeginCommandBuffer(transferBuf, &commandBufferBeginInfo);
 			imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
@@ -354,9 +357,20 @@ int main(int argc, char *argv[]) {
 
 			submitInfo.pCommandBuffers = &transferBuf;
 			vkQueueSubmit(transferQueue, 1, &submitInfo, commandFence1);
-
 			vkWaitForFences(dev, 1, &commandFence2, VK_TRUE, ~0ull);
 			vkResetFences(dev, 1, &commandFence2);
+
+			// Present swapchain image, and wait for all command buffer executions before restarting loop
+			VkPresentInfoKHR presentInfo;
+			presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+			presentInfo.pNext = NULL;
+			presentInfo.waitSemaphoreCount = 1;
+			presentInfo.pWaitSemaphores = &commandSem;
+			presentInfo.swapchainCount = 1;
+			presentInfo.pSwapchains = &swapchain;
+			presentInfo.pImageIndices = &imgIndex;
+			presentInfo.pResults = NULL;
+			vkQueuePresent(graphicsQueue, &presentInfo);
 			vkWaitForFences(dev, 1, &commandFence1, VK_TRUE, ~0ull);
 			vkResetFences(dev, 1, &commandFence1);
 		}

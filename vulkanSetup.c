@@ -227,6 +227,7 @@ VkResult (*vkCreateSwapchain) (VkDevice device,
 				const VkAllocationCallbacks *pAllocator,
 				VkSwapchainKHR *pSwapchain);
 VkResult (*vkGetSwapchainImages) (VkDevice device, VkSwapchainKHR swapchain, uint32_t *pSwapchainImageCount, VkImage *pSwapchainImages);
+VkResult (*vkQueuePresent) (VkQueue queue, const VkPresentInfoKHR *pPresentInfo);
 void getExtensionFunctions() {
 	vkGetDrmDisplay = vkGetInstanceProcAddr(inst, "vkGetDrmDisplayEXT");
 	vkAcquireDrmDisplay = vkGetInstanceProcAddr(inst, "vkAcquireDrmDisplayEXT");
@@ -237,6 +238,7 @@ void getExtensionFunctions() {
 	vkGetPhysicalDeviceSurfaceFormats = vkGetInstanceProcAddr(inst, "vkGetPhysicalDeviceSurfaceFormatsKHR");
 	vkCreateSwapchain = vkGetInstanceProcAddr(inst, "vkCreateSwapchainKHR");
 	vkGetSwapchainImages = vkGetInstanceProcAddr(inst, "vkGetSwapchainImagesKHR");
+	vkQueuePresent = vkGetDeviceProcAddr(dev, "vkQueuePresentKHR");
 }
 
 void createLogicalDevice() {
@@ -1090,8 +1092,8 @@ void vkSetup(int monitorIndex) {
 	fd = getDrmMasterFd(monitorIndex, &isLeased);
 
 	createInstance();
-	getExtensionFunctions();
 	createLogicalDevice();
+	getExtensionFunctions();
 
 	if (isLeased)
 		monitorIndex = 0;
