@@ -1,16 +1,32 @@
 #version 460 core
 
 layout (local_size_x = 4, local_size_y = 4, local_size_z = 8) in;
-layout (set = 0, binding = 0) buffer particles {
+layout (constant_id = 0) const int particleCount = 1;
+
+struct particleData {
 	float posX;
 	float posY;
 	float dirX;
 	float dirY;
 	float angle;
 };
+layout (set = 0, binding = 0) buffer Particles {
+	particleData[] p;
+} particles;
 layout (set = 0, binding = 1, rgba8) uniform writeonly image2D backImg;
 layout (set = 0, binding = 2, rgba8) uniform readonly image2D frontImg;
 
 void main(void) {
-	
+	uvec3 numInstancesInGlobal = uvec3(4,4,8) * gl_NumWorkGroups;
+	uint particleIndex =
+		gl_GlobalInvocationID.z * numInstancesInGlobal.x * numInstancesInGlobal.y +
+		gl_GlobalInvocationID.y * numInstancesInGlobal.x +
+		gl_GlobalInvocationID.x;
+	if (particleIndex >= particleCount) return;
+
+	vec4 pixel = {1.0,1.0,1.0,1.0};
+	ivec2 pos;
+	pos.x = int(round(particles.p[particleIndex].posX));
+	pos.y = int(round(particles.p[particleIndex].posY));
+	imageStore(backImg, pos, pixel);
 }
