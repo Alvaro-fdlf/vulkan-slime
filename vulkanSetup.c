@@ -34,6 +34,15 @@ typedef struct {
 	float posX, posY, dirX, dirY, angle;
 } vkParticle;
 extern const int particleCount;
+extern double particleSpeed;
+extern double steerAmplitude;
+extern int steerLength;
+extern double maxRandRadianChange;
+extern uint32_t particleColor;
+extern uint8_t redFade, greenFade, blueFade;
+extern const unsigned int blurKernel[9];
+extern unsigned int blurDivide;
+extern unsigned int vkRandSeed;
 VkBuffer vertexBuf, particleBuf;
 VkImage frontImg, backImg;
 VkImageView frontImgView, backImgView;
@@ -675,16 +684,63 @@ void createComputePipeline() {
 	VkShaderModule computeModule = createModule("compute.spv");
 
 	// Compute pipeline
-	VkSpecializationMapEntry specializationEntry;
-	specializationEntry.constantID = 0;
-	specializationEntry.offset = 0;
-	specializationEntry.size = 4;
+	struct specConst {
+		int pCount;
+		float pSpeed;
+		float stAmp;
+		int stLen;
+		float maxRand;
+		float pR;
+		float pG;
+		float pB;
+		unsigned int randSeed;
+	} spec;
+	spec.pCount = particleCount;
+	spec.pSpeed = particleSpeed;
+	spec.stAmp = steerAmplitude;
+	spec.stLen = steerLength;
+	spec.maxRand = maxRandRadianChange;
+	spec.pR = (float)(particleColor/0x10000 % 0x100) / 0xFF;
+	spec.pG = (float)(particleColor/0x100 % 0x100) / 0xFF;
+	spec.pB = (float)(particleColor % 0x100) / 0XFF;
+	spec.randSeed = vkRandSeed;
+	printf("%d, %d, %d\n", particleColor/0x10000 % 0x100, particleColor/0x100 % 0x100, particleColor % 0x100);
+	printf("%f, %f, %f\n", spec.pR, spec.pG, spec.pB);
+
+	VkSpecializationMapEntry specializationEntries[9];
+	specializationEntries[0].constantID = 0;
+	specializationEntries[0].offset = offsetof(struct specConst, pCount);
+	specializationEntries[0].size = sizeof(int);
+	specializationEntries[1].constantID = 1;
+	specializationEntries[1].offset = offsetof(struct specConst, pSpeed);
+	specializationEntries[1].size = sizeof(float);
+	specializationEntries[2].constantID = 2;
+	specializationEntries[2].offset = offsetof(struct specConst, stAmp);
+	specializationEntries[2].size = sizeof(float);
+	specializationEntries[3].constantID = 3;
+	specializationEntries[3].offset = offsetof(struct specConst, stLen);
+	specializationEntries[3].size = sizeof(int);
+	specializationEntries[4].constantID = 4;
+	specializationEntries[4].offset = offsetof(struct specConst, maxRand);
+	specializationEntries[4].size = sizeof(float);
+	specializationEntries[5].constantID = 5;
+	specializationEntries[5].offset = offsetof(struct specConst, pR);
+	specializationEntries[5].size = sizeof(float);
+	specializationEntries[6].constantID = 6;
+	specializationEntries[6].offset = offsetof(struct specConst, pG);
+	specializationEntries[6].size = sizeof(float);
+	specializationEntries[7].constantID = 7;
+	specializationEntries[7].offset = offsetof(struct specConst, pB);
+	specializationEntries[7].size = sizeof(float);
+	specializationEntries[8].constantID = 8;
+	specializationEntries[8].offset = offsetof(struct specConst, randSeed);
+	specializationEntries[8].size = sizeof(unsigned int);
 
 	VkSpecializationInfo specializationInfo;
-	specializationInfo.mapEntryCount = 1;
-	specializationInfo.pMapEntries = &specializationEntry;
-	specializationInfo.dataSize = 4;
-	specializationInfo.pData = &particleCount;
+	specializationInfo.mapEntryCount = 9;
+	specializationInfo.pMapEntries = specializationEntries;
+	specializationInfo.dataSize = sizeof(struct specConst);
+	specializationInfo.pData = &spec;
 
 	VkPipelineShaderStageCreateInfo shaderStageInfo;
 	shaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;

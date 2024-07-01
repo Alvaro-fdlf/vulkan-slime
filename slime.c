@@ -29,6 +29,7 @@ const unsigned int blurKernel[9] = {4, 2, 4, // can be not const, but blur is th
 				2, 1, 2,
 				4, 2, 4};
 unsigned int blurDivide = 25; // should be set to the sum of elements of blurkernel
+unsigned int vkRandSeed;
 /*
  *
  */
@@ -96,6 +97,7 @@ int main(int argc, char *argv[]) {
 		vkSetup(monitorIndex);
 
 		srand(getMicros());
+		vkRandSeed = getMicros();
 		for (int i=0; i<particleCount; i++) {
 			genVkParticle(mappedParticles + i);
 		}

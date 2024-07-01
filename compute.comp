@@ -2,6 +2,14 @@
 
 layout (local_size_x = 4, local_size_y = 4, local_size_z = 8) in;
 layout (constant_id = 0) const int particleCount = 1;
+layout (constant_id = 1) const float particleSpeed = 1.0;
+layout (constant_id = 2) const float steerAmplitude = 1.0;
+layout (constant_id = 3) const int steerLength = 1;
+layout (constant_id = 4) const float maxRand = 1.0;
+layout (constant_id = 5) const float particleR = 1.0;
+layout (constant_id = 6) const float particleG = 1.0;
+layout (constant_id = 7) const float particleB = 1.0;
+layout (constant_id = 8) const uint vkRandSeed = 1;
 
 struct particleData {
 	float posX;
@@ -24,7 +32,9 @@ void main(void) {
 		gl_GlobalInvocationID.x;
 	if (particleIndex >= particleCount) return;
 
-	vec4 pixel = {1.0,1.0,1.0,1.0};
+	// For some reason it acts as bgra instead of rgba
+	// might be a problem with the transfer from backImg to swapchain
+	vec4 pixel = {particleB, particleG, particleR, 1.0};
 	ivec2 pos;
 	pos.x = int(round(particles.p[particleIndex].posX));
 	pos.y = int(round(particles.p[particleIndex].posY));
