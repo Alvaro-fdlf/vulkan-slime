@@ -275,14 +275,22 @@ int main(int argc, char *argv[]) {
 			swap(graphicsBackToFrontBuf, graphicsFrontToBackBuf);
 			swap(computeBackToFrontBuf, computeFrontToBackBuf);
 
-			// Submit graphics command buffer
+			// Submit graphics and compute command buffers
 			submitInfo.pCommandBuffers = &graphicsFrontToBackBuf;
 			vkQueueSubmit(graphicsQueue, 1, &submitInfo, commandFence1);
 			submitInfo.pCommandBuffers = &computeFrontToBackBuf;
 			vkQueueSubmit(computeQueue, 1, &submitInfo, commandFence2);
+
+			// Get next swapchain image and wait first command execution
+			uint32_t imgIndex;
+			vkAcquireNextImageKHR(dev, swapchain, ~0ull-1, VK_NULL_HANDLE, swapFence, &imgIndex);
+			vkWaitForFences(dev, 1, &swapFence, VK_TRUE, ~0ull);
 			vkWaitForFences(dev, 1, &commandFence1, VK_TRUE, ~0ull);
+			vkResetFences(dev, 1, &swapFence);
 			vkResetFences(dev, 1, &commandFence1);
-			exit(0); // for now
+
+			vkWaitForFences(dev, 1, &commandFence2, VK_TRUE, ~0ull);
+			vkResetFences(dev, 1, &commandFence2);
 		}
 		atexit(vkCleanup);
 	} else {

@@ -1,6 +1,8 @@
 #include <vulkan/vulkan.h>
 
 extern uint32_t qFamGraphicsIndex, qFamComputeIndex, qFamTransferIndex;
+extern VkSwapchainKHR swapchain;
+extern VkImage *images;
 extern VkDevice dev;
 
 extern VkQueue graphicsQueue, computeQueue, transferQueue;
