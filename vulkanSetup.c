@@ -1064,7 +1064,10 @@ void createGraphicsPipeline() {
 	colorBlendAttachment.srcAlphaBlendFactor = 0;
 	colorBlendAttachment.dstAlphaBlendFactor = 0;
 	colorBlendAttachment.alphaBlendOp = 0;
-	colorBlendAttachment.colorWriteMask = 0;
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT |
+						VK_COLOR_COMPONENT_G_BIT |
+						VK_COLOR_COMPONENT_B_BIT |
+						VK_COLOR_COMPONENT_A_BIT;
 
 	VkPipelineColorBlendStateCreateInfo colorBlendState;
 	colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
@@ -1206,13 +1209,13 @@ void vkSetup(int monitorIndex) {
 	createViews();
 	mapBufs();
 	mappedVertices[0].x = -1.0;
-	mappedVertices[0].y = 0.0;
+	mappedVertices[0].y = -1.0;
 	mappedVertices[0].z = 0.5;
-	mappedVertices[1].x = 2.0;
-	mappedVertices[1].y = 0.0;
+	mappedVertices[1].x = 3.0;
+	mappedVertices[1].y = -1.0;
 	mappedVertices[1].z = 0.5;
-	mappedVertices[2].x = 0.5;
-	mappedVertices[2].y = 2.0;
+	mappedVertices[2].x = -1.0;
+	mappedVertices[2].y = 3.0;
 	mappedVertices[2].z = 0.5;
 
 	createDescriptorPool();

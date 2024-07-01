@@ -236,8 +236,8 @@ int main(int argc, char *argv[]) {
 		VkDeviceSize offset = 0;
 		vkCmdBindVertexBuffers(graphicsBackToFrontBuf, 0, 1, &vertexBuf, &offset);
 		vkCmdBindVertexBuffers(graphicsFrontToBackBuf, 0, 1, &vertexBuf, &offset);
-		vkCmdDraw(graphicsBackToFrontBuf, 3, 0, 0, 0);
-		vkCmdDraw(graphicsFrontToBackBuf, 3, 0, 0, 0);
+		vkCmdDraw(graphicsBackToFrontBuf, 3, 1, 0, 0);
+		vkCmdDraw(graphicsFrontToBackBuf, 3, 1, 0, 0);
 		vkCmdEndRenderPass(graphicsBackToFrontBuf);
 		vkCmdEndRenderPass(graphicsFrontToBackBuf);
 		vkEndCommandBuffer(graphicsBackToFrontBuf);
