@@ -30,6 +30,7 @@ layout (set = 0, binding = 2, rgba8) uniform readonly image2D frontImg;
 #define p (particles.p[particleIndex])
 
 void main(void) {
+return;
 	uvec3 numInstancesInGlobal = uvec3(4,4,8) * gl_NumWorkGroups;
 	uint particleIndex =
 		gl_GlobalInvocationID.z * numInstancesInGlobal.x * numInstancesInGlobal.y +

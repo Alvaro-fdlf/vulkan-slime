@@ -926,7 +926,44 @@ void createGraphicsPipeline() {
 	result = vkCreateFramebuffer(dev, &fbInfo, NULL, &frontFb);
 	vkFail("Failed to create front framebuffer\n");
 
-	// Graphics pipelines
+	// Graphics pipeline
+	struct specConst {
+		float rFade;
+		float gFade;
+		float bFade;
+		float blurKernel[9];
+		float blurDivide;
+	} spec;
+	spec.rFade = (float)redFade / 0xFF;
+	spec.gFade = (float)greenFade / 0xFF;
+	spec.bFade = (float)blueFade / 0xFF;
+	for (int i=0; i<9; i++)
+		spec.blurKernel[i] = blurKernel[i];
+	spec.blurDivide = blurDivide;
+
+	VkSpecializationMapEntry specializationEntries[5];
+	specializationEntries[0].constantID = 0;
+	specializationEntries[0].offset = offsetof(struct specConst, rFade);
+	specializationEntries[0].size = sizeof(float);
+	specializationEntries[1].constantID = 1;
+	specializationEntries[1].offset = offsetof(struct specConst, gFade);
+	specializationEntries[1].size = sizeof(float);
+	specializationEntries[2].constantID = 2;
+	specializationEntries[2].offset = offsetof(struct specConst, bFade);
+	specializationEntries[2].size = sizeof(float);
+	specializationEntries[3].constantID = 3;
+	specializationEntries[3].offset = offsetof(struct specConst, blurKernel);
+	specializationEntries[3].size = sizeof(float) * 9;
+	specializationEntries[4].constantID = 4;
+	specializationEntries[4].offset = offsetof(struct specConst, blurDivide);
+	specializationEntries[4].size = sizeof(float);
+
+	VkSpecializationInfo specializationInfo;
+	specializationInfo.mapEntryCount = 5;
+	specializationInfo.pMapEntries = specializationEntries;
+	specializationInfo.dataSize = sizeof(struct specConst);
+	specializationInfo.pData = &spec;
+
 	VkPipelineShaderStageCreateInfo stageInfos[2];
 	stageInfos[0].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
 	stageInfos[0].pNext = NULL;
@@ -941,7 +978,7 @@ void createGraphicsPipeline() {
 	stageInfos[1].stage = VK_SHADER_STAGE_FRAGMENT_BIT;
 	stageInfos[1].module = fragmentModule;
 	stageInfos[1].pName = "main";
-	stageInfos[1].pSpecializationInfo = NULL;
+	stageInfos[1].pSpecializationInfo = &specializationInfo;
 
 	VkVertexInputBindingDescription vertexBindingInfo;
 	vertexBindingInfo.binding = 0;
@@ -1170,13 +1207,13 @@ void vkSetup(int monitorIndex) {
 	mapBufs();
 	mappedVertices[0].x = -1.0;
 	mappedVertices[0].y = 0.0;
-	mappedVertices[0].z = 1.0;
+	mappedVertices[0].z = 0.5;
 	mappedVertices[1].x = 2.0;
 	mappedVertices[1].y = 0.0;
-	mappedVertices[1].z = 1.0;
+	mappedVertices[1].z = 0.5;
 	mappedVertices[2].x = 0.5;
 	mappedVertices[2].y = 2.0;
-	mappedVertices[2].z = 1.0;
+	mappedVertices[2].z = 0.5;
 
 	createDescriptorPool();
 	createComputePipeline();
