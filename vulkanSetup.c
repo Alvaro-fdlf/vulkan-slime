@@ -1171,10 +1171,10 @@ void createGraphicsPipeline() {
 	writeDescriptor.dstBinding = 1;
 	writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
 	imgInfo.imageView = backImgView;
-	writeDescriptor.dstSet = graphicsFront;
+	writeDescriptor.dstSet = graphicsBack;
 	vkUpdateDescriptorSets(dev, 1, &writeDescriptor, 0, NULL);
 	imgInfo.imageView = frontImgView;
-	writeDescriptor.dstSet = graphicsBack;
+	writeDescriptor.dstSet = graphicsFront;
 	vkUpdateDescriptorSets(dev, 1, &writeDescriptor, 0, NULL);
 
 
