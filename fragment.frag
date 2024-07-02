@@ -43,7 +43,6 @@ void main(void) {
 				dl*blur7 + dc*blur8 + dr*blur9;
 
 		outPixel /= blurDivide;
-		//outPixel = clamp(outPixel, vec4(0.0, 0.0, 0.0, 1.0), vec4(particleB, particleG, particleR, 1.0));
 
 		// Fade
 		outPixel.r -= redFade;
