@@ -6,12 +6,9 @@ layout (constant_id = 1) const float particleSpeed = 1.0;
 layout (constant_id = 2) const float steerAmplitude = 1.0;
 layout (constant_id = 3) const int steerLength = 1;
 layout (constant_id = 4) const float maxRand = 1.0;
-layout (constant_id = 5) const float particleR = 1.0;
-layout (constant_id = 6) const float particleG = 1.0;
-layout (constant_id = 7) const float particleB = 1.0;
-layout (constant_id = 8) const uint vkRandSeed = 1;
-layout (constant_id = 9) const uint screenWidth = 1920;
-layout (constant_id = 10) const uint screenHeight = 1080;
+layout (constant_id = 5) const uint vkRandSeed = 1;
+layout (constant_id = 6) const uint screenWidth = 1920;
+layout (constant_id = 7) const uint screenHeight = 1080;
 
 struct particleData {
 	float posX;
@@ -30,7 +27,6 @@ layout (set = 0, binding = 2, rgba8) uniform readonly image2D frontImg;
 #define p (particles.p[particleIndex])
 
 void main(void) {
-return;
 	uvec3 numInstancesInGlobal = uvec3(4,4,8) * gl_NumWorkGroups;
 	uint particleIndex =
 		gl_GlobalInvocationID.z * numInstancesInGlobal.x * numInstancesInGlobal.y +
@@ -94,7 +90,7 @@ return;
 
 	// For some reason it acts as bgra instead of rgba
 	// might be a problem with the transfer from backImg to swapchain
-	vec4 pixel = {particleB, particleG, particleR, 1.0};
+	vec4 pixel = {0.5, 0.5, 0.5, 0.5}; // alpha being 0.5 identifies a particle to the fragment shader
 	ivec2 pos;
 	pos.x = int(round(p.posX));
 	pos.y = int(round(p.posY));

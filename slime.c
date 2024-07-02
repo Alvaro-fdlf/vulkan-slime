@@ -142,12 +142,22 @@ int main(int argc, char *argv[]) {
 		VkImageMemoryBarrier imageMemBarrier;
 		imageMemBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
 		imageMemBarrier.pNext = NULL;
-		imageMemBarrier.srcAccessMask = 0;
-		imageMemBarrier.dstAccessMask = 0;
+		imageMemBarrier.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT |
+						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+						VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
+						VK_ACCESS_TRANSFER_WRITE_BIT |
+						VK_ACCESS_HOST_WRITE_BIT |
+						VK_ACCESS_MEMORY_WRITE_BIT;
+		imageMemBarrier.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT |
+						VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+						VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT |
+						VK_ACCESS_TRANSFER_WRITE_BIT |
+						VK_ACCESS_HOST_WRITE_BIT |
+						VK_ACCESS_MEMORY_WRITE_BIT;
 		imageMemBarrier.subresourceRange = subResourceRange;
 
 		// First create setup command buffer to be executed once
-		// When the loop starts the graphics command buffer should see the images as if they
+		// When the loop starts the compute command buffer should see the images as if they
 		// had just come from a previous finished loop
 		// Also move all swapchain images from undefined to present layout
 		vkAllocateCommandBuffers(dev, &commandBufferInfo, &setupBuf);
@@ -158,13 +168,13 @@ int main(int argc, char *argv[]) {
 		imageMemBarrier.dstQueueFamilyIndex = qFamTransferIndex;
 		imageMemBarrier.image = frontImg;
 		vkCmdPipelineBarrier(setupBuf,
-					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
 		imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
 		imageMemBarrier.dstQueueFamilyIndex = qFamComputeIndex;
 		imageMemBarrier.image = backImg;
 		vkCmdPipelineBarrier(setupBuf,
-					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
 
 		imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
@@ -172,7 +182,7 @@ int main(int argc, char *argv[]) {
 		for (uint32_t i=0; i<imgCount; i++) {
 			imageMemBarrier.image = images[i];
 			vkCmdPipelineBarrier(setupBuf,
-					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
 		}
 		vkEndCommandBuffer(setupBuf);
@@ -182,37 +192,37 @@ int main(int argc, char *argv[]) {
 		vkBeginCommandBuffer(graphicsBackToFrontBuf, &commandBufferBeginInfo);
 		vkBeginCommandBuffer(graphicsFrontToBackBuf, &commandBufferBeginInfo);
 		imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-		imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		imageMemBarrier.srcQueueFamilyIndex = qFamTransferIndex;
+		imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+		imageMemBarrier.srcQueueFamilyIndex = qFamComputeIndex;
 		imageMemBarrier.dstQueueFamilyIndex = qFamGraphicsIndex;
 		imageMemBarrier.image = frontImg;
 		vkCmdPipelineBarrier(graphicsBackToFrontBuf,
-					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
-		imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
 		imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
 		imageMemBarrier.srcQueueFamilyIndex = qFamComputeIndex;
 		imageMemBarrier.dstQueueFamilyIndex = qFamGraphicsIndex;
 		imageMemBarrier.image = backImg;
 		vkCmdPipelineBarrier(graphicsBackToFrontBuf,
-					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
 
 		imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
-		imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-		imageMemBarrier.srcQueueFamilyIndex = qFamTransferIndex;
+		imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+		imageMemBarrier.srcQueueFamilyIndex = qFamComputeIndex;
 		imageMemBarrier.dstQueueFamilyIndex = qFamGraphicsIndex;
 		imageMemBarrier.image = backImg;
 		vkCmdPipelineBarrier(graphicsFrontToBackBuf,
-					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
-		imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
 		imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
 		imageMemBarrier.srcQueueFamilyIndex = qFamComputeIndex;
 		imageMemBarrier.dstQueueFamilyIndex = qFamGraphicsIndex;
 		imageMemBarrier.image = frontImg;
 		vkCmdPipelineBarrier(graphicsFrontToBackBuf,
-					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
 
 
@@ -244,8 +254,7 @@ int main(int argc, char *argv[]) {
 		vkEndCommandBuffer(graphicsFrontToBackBuf);
 
 		// Set up compute commands
-		// The front image is already in general layout, and the back image moves to general
-		// beacuse of the renderpass final layout
+		// The front image is already in general layout, and the back image moves from transfer to general
 		commandBufferInfo.commandPool = computePool;
 		vkAllocateCommandBuffers(dev, &commandBufferInfo, &computeBackToFrontBuf);
 		vkAllocateCommandBuffers(dev, &commandBufferInfo, &computeFrontToBackBuf);
@@ -263,6 +272,22 @@ int main(int argc, char *argv[]) {
 					computePipelineLayout,
 					0, 1, &compFrontToBack,
 					0, NULL);
+		imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+		imageMemBarrier.srcQueueFamilyIndex = qFamTransferIndex;
+		imageMemBarrier.dstQueueFamilyIndex = qFamComputeIndex;
+		imageMemBarrier.image = backImg;
+		vkCmdPipelineBarrier(computeBackToFrontBuf,
+					VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
+		imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+		imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+		imageMemBarrier.srcQueueFamilyIndex = qFamTransferIndex;
+		imageMemBarrier.dstQueueFamilyIndex = qFamComputeIndex;
+		imageMemBarrier.image = frontImg;
+		vkCmdPipelineBarrier(computeFrontToBackBuf,
+					VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
 
 		int localGroupsNeeded = particleCount / particlesPerGroup;
 		int cubeSide = 1;
@@ -298,7 +323,7 @@ int main(int argc, char *argv[]) {
 		copyRegion.extent.depth = 1;
 
 		VkSubmitInfo submitInfo;
-		VkPipelineStageFlags stageFlags = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+		VkPipelineStageFlags stageFlags = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
 		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
 		submitInfo.pNext = NULL;
 		submitInfo.waitSemaphoreCount = 0;
@@ -318,26 +343,26 @@ int main(int argc, char *argv[]) {
 			swap(graphicsBackToFrontBuf, graphicsFrontToBackBuf);
 			swap(computeBackToFrontBuf, computeFrontToBackBuf);
 
-			// Submit graphics and compute command buffers
+			// Submit compute and graphics command buffers
 			submitInfo.waitSemaphoreCount = 0;
 			submitInfo.pWaitSemaphores = NULL;
-			submitInfo.pCommandBuffers = &graphicsFrontToBackBuf;
-			vkQueueSubmit(graphicsQueue, 1, &submitInfo, commandFence1);
+			submitInfo.pCommandBuffers = &computeFrontToBackBuf;
+			vkQueueSubmit(computeQueue, 1, &submitInfo, commandFence1);
 			unsigned long long start = getMicros();
 			vkWaitForFences(dev, 1, &commandFence1, VK_TRUE, ~0ull);
 			unsigned long long end = getMicros();
 			unsigned long long elapsed = end - start;
+			printf("%llu microseconds for compute\n", elapsed);
 
-			printf("%llu microseconds for graphics\n", elapsed);
 			submitInfo.waitSemaphoreCount = 1;
 			submitInfo.pWaitSemaphores = &commandSem;
-			submitInfo.pCommandBuffers = &computeFrontToBackBuf;
-			vkQueueSubmit(computeQueue, 1, &submitInfo, commandFence2);
+			submitInfo.pCommandBuffers = &graphicsFrontToBackBuf;
+			vkQueueSubmit(graphicsQueue, 1, &submitInfo, commandFence2);
 			start = getMicros();
 			vkWaitForFences(dev, 1, &commandFence2, VK_TRUE, ~0ull);
 			end = getMicros();
 			elapsed = end - start;
-			printf("%llu microseconds for compute\n", elapsed);
+			printf("%llu microseconds for graphics\n", elapsed);
 
 			vkResetFences(dev, 1, &commandFence1);
 			vkResetFences(dev, 1, &commandFence2);
@@ -359,7 +384,7 @@ int main(int argc, char *argv[]) {
 			imageMemBarrier.dstQueueFamilyIndex = qFamTransferIndex;
 			imageMemBarrier.image = backImg;
 			vkCmdPipelineBarrier(transferBuf,
-					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
 			imageMemBarrier.oldLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 			imageMemBarrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
@@ -367,7 +392,7 @@ int main(int argc, char *argv[]) {
 			imageMemBarrier.dstQueueFamilyIndex = qFamGraphicsIndex;
 			imageMemBarrier.image = images[imgIndex];
 			vkCmdPipelineBarrier(transferBuf,
-					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
 			vkCmdCopyImage(transferBuf, backImg, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
 					images[imgIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
@@ -377,7 +402,7 @@ int main(int argc, char *argv[]) {
 			imageMemBarrier.dstQueueFamilyIndex = qFamGraphicsIndex;
 			imageMemBarrier.image = images[imgIndex];
 			vkCmdPipelineBarrier(transferBuf,
-					VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+					VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
 					0, 0, NULL, 0, NULL, 1, &imageMemBarrier);
 			vkEndCommandBuffer(transferBuf);
 

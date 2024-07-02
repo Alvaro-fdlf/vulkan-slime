@@ -509,7 +509,8 @@ void createResources() {
 	imgCreateInfo.samples = VK_SAMPLE_COUNT_1_BIT;
 	imgCreateInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
 	imgCreateInfo.usage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT |
-				VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+				VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+				VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
 	imgCreateInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 	imgCreateInfo.queueFamilyIndexCount = 0;
 	imgCreateInfo.pQueueFamilyIndices = NULL;
@@ -621,11 +622,13 @@ void mapBufs() {
 }
 
 void createDescriptorPool() {
-	VkDescriptorPoolSize poolSizes[2];
+	VkDescriptorPoolSize poolSizes[3];
 	poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 	poolSizes[0].descriptorCount = 2;
 	poolSizes[1].type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
 	poolSizes[1].descriptorCount = 6;
+	poolSizes[2].type = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+	poolSizes[2].descriptorCount = 2;
 
 	VkDescriptorPoolCreateInfo poolInfo;
 	poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -690,9 +693,6 @@ void createComputePipeline() {
 		float stAmp;
 		int stLen;
 		float maxRand;
-		float pR;
-		float pG;
-		float pB;
 		unsigned int randSeed;
 		unsigned int scrW;
 		unsigned int scrH;
@@ -702,14 +702,11 @@ void createComputePipeline() {
 	spec.stAmp = steerAmplitude;
 	spec.stLen = steerLength;
 	spec.maxRand = maxRandRadianChange;
-	spec.pR = (float)(particleColor/0x10000 % 0x100) / 0xFF;
-	spec.pG = (float)(particleColor/0x100 % 0x100) / 0xFF;
-	spec.pB = (float)(particleColor % 0x100) / 0XFF;
 	spec.randSeed = vkRandSeed;
 	spec.scrW = screenWidth;
 	spec.scrH = screenHeight;
 
-	VkSpecializationMapEntry specializationEntries[11];
+	VkSpecializationMapEntry specializationEntries[8];
 	specializationEntries[0].constantID = 0;
 	specializationEntries[0].offset = offsetof(struct specConst, pCount);
 	specializationEntries[0].size = sizeof(int);
@@ -726,26 +723,17 @@ void createComputePipeline() {
 	specializationEntries[4].offset = offsetof(struct specConst, maxRand);
 	specializationEntries[4].size = sizeof(float);
 	specializationEntries[5].constantID = 5;
-	specializationEntries[5].offset = offsetof(struct specConst, pR);
-	specializationEntries[5].size = sizeof(float);
+	specializationEntries[5].offset = offsetof(struct specConst, randSeed);
+	specializationEntries[5].size = sizeof(unsigned int);
 	specializationEntries[6].constantID = 6;
-	specializationEntries[6].offset = offsetof(struct specConst, pG);
-	specializationEntries[6].size = sizeof(float);
+	specializationEntries[6].offset = offsetof(struct specConst, scrW);
+	specializationEntries[6].size = sizeof(unsigned int);
 	specializationEntries[7].constantID = 7;
-	specializationEntries[7].offset = offsetof(struct specConst, pB);
-	specializationEntries[7].size = sizeof(float);
-	specializationEntries[8].constantID = 8;
-	specializationEntries[8].offset = offsetof(struct specConst, randSeed);
-	specializationEntries[8].size = sizeof(unsigned int);
-	specializationEntries[9].constantID = 9;
-	specializationEntries[9].offset = offsetof(struct specConst, scrW);
-	specializationEntries[9].size = sizeof(unsigned int);
-	specializationEntries[10].constantID = 10;
-	specializationEntries[10].offset = offsetof(struct specConst, scrH);
-	specializationEntries[10].size = sizeof(unsigned int);
+	specializationEntries[7].offset = offsetof(struct specConst, scrH);
+	specializationEntries[7].size = sizeof(unsigned int);
 
 	VkSpecializationInfo specializationInfo;
-	specializationInfo.mapEntryCount = 11;
+	specializationInfo.mapEntryCount = 8;
 	specializationInfo.pMapEntries = specializationEntries;
 	specializationInfo.dataSize = sizeof(struct specConst);
 	specializationInfo.pData = &spec;
@@ -833,19 +821,22 @@ void createComputePipeline() {
 }
 
 void createGraphicsPipeline() {
-	// Descriptor set layout, has a single image to read from
-	VkDescriptorSetLayoutBinding binding;
-	binding.binding = 0;
-	binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-	binding.descriptorCount = 1;
-	binding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-	binding.pImmutableSamplers = NULL;
+	// Descriptor set layout, reads from both images now
+	VkDescriptorSetLayoutBinding bindings[2];
+	bindings[0].binding = 0;
+	bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+	bindings[0].descriptorCount = 1;
+	bindings[0].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+	bindings[0].pImmutableSamplers = NULL;
+	bindings[1] = bindings[0];
+	bindings[1].binding = 1;
+	bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
 	VkDescriptorSetLayoutCreateInfo setLayoutInfo;
 	setLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
 	setLayoutInfo.pNext = NULL;
 	setLayoutInfo.flags = 0;
-	setLayoutInfo.bindingCount = 1;
-	setLayoutInfo.pBindings = &binding;
+	setLayoutInfo.bindingCount = 2;
+	setLayoutInfo.pBindings = bindings;
 
 	VkDescriptorSetLayout setLayout;
 	result = vkCreateDescriptorSetLayout(dev, &setLayoutInfo, NULL, &setLayout);
@@ -873,22 +864,22 @@ void createGraphicsPipeline() {
 	attachDescription.flags = 0;
 	attachDescription.format = VK_FORMAT_R8G8B8A8_UNORM;
 	attachDescription.samples = VK_SAMPLE_COUNT_1_BIT;
-	attachDescription.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	attachDescription.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 	attachDescription.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
 	attachDescription.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
 	attachDescription.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-	attachDescription.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-	attachDescription.finalLayout = VK_IMAGE_LAYOUT_GENERAL; // after graphics comes compute
+	attachDescription.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
+	attachDescription.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 	VkAttachmentReference attachRef;
 	attachRef.attachment = 0;
-	attachRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	attachRef.layout = VK_IMAGE_LAYOUT_GENERAL;
 
 	VkSubpassDescription subpassDescription;
 	subpassDescription.flags = 0;
 	subpassDescription.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-	subpassDescription.inputAttachmentCount = 0;
-	subpassDescription.pInputAttachments = NULL;
+	subpassDescription.inputAttachmentCount = 1;
+	subpassDescription.pInputAttachments = &attachRef;
 	subpassDescription.colorAttachmentCount = 1;
 	subpassDescription.pColorAttachments = &attachRef;
 	subpassDescription.pResolveAttachments = NULL;
@@ -933,6 +924,9 @@ void createGraphicsPipeline() {
 		float bFade;
 		float blurKernel[9];
 		float blurDivide;
+		float pR;
+		float pG;
+		float pB;
 	} spec;
 	spec.rFade = (float)redFade / 0xFF;
 	spec.gFade = (float)greenFade / 0xFF;
@@ -940,8 +934,11 @@ void createGraphicsPipeline() {
 	for (int i=0; i<9; i++)
 		spec.blurKernel[i] = blurKernel[i];
 	spec.blurDivide = blurDivide;
+	spec.pR = (float)(particleColor/0x10000 % 0x100) / 0xFF;
+	spec.pG = (float)(particleColor/0x100 % 0x100) / 0xFF;
+	spec.pB = (float)(particleColor % 0x100) / 0XFF;
 
-	VkSpecializationMapEntry specializationEntries[5];
+	VkSpecializationMapEntry specializationEntries[16];
 	specializationEntries[0].constantID = 0;
 	specializationEntries[0].offset = offsetof(struct specConst, rFade);
 	specializationEntries[0].size = sizeof(float);
@@ -953,13 +950,46 @@ void createGraphicsPipeline() {
 	specializationEntries[2].size = sizeof(float);
 	specializationEntries[3].constantID = 3;
 	specializationEntries[3].offset = offsetof(struct specConst, blurKernel);
-	specializationEntries[3].size = sizeof(float) * 9;
+	specializationEntries[3].size = sizeof(float);
 	specializationEntries[4].constantID = 4;
-	specializationEntries[4].offset = offsetof(struct specConst, blurDivide);
+	specializationEntries[4].offset = offsetof(struct specConst, blurKernel) + sizeof(float);
 	specializationEntries[4].size = sizeof(float);
+	specializationEntries[5].constantID = 5;
+	specializationEntries[5].offset = offsetof(struct specConst, blurKernel) + 2*sizeof(float);
+	specializationEntries[5].size = sizeof(float);
+	specializationEntries[6].constantID = 6;
+	specializationEntries[6].offset = offsetof(struct specConst, blurKernel) + 3*sizeof(float);
+	specializationEntries[6].size = sizeof(float);
+	specializationEntries[7].constantID = 7;
+	specializationEntries[7].offset = offsetof(struct specConst, blurKernel) + 4*sizeof(float);
+	specializationEntries[7].size = sizeof(float);
+	specializationEntries[8].constantID = 8;
+	specializationEntries[8].offset = offsetof(struct specConst, blurKernel) + 5*sizeof(float);
+	specializationEntries[8].size = sizeof(float);
+	specializationEntries[9].constantID = 9;
+	specializationEntries[9].offset = offsetof(struct specConst, blurKernel) + 6*sizeof(float);
+	specializationEntries[9].size = sizeof(float);
+	specializationEntries[10].constantID = 10;
+	specializationEntries[10].offset = offsetof(struct specConst, blurKernel) + 7*sizeof(float);
+	specializationEntries[10].size = sizeof(float);
+	specializationEntries[11].constantID = 11;
+	specializationEntries[11].offset = offsetof(struct specConst, blurKernel) + 8*sizeof(float);
+	specializationEntries[11].size = sizeof(float);
+	specializationEntries[12].constantID = 12;
+	specializationEntries[12].offset = offsetof(struct specConst, blurDivide);
+	specializationEntries[12].size = sizeof(float);
+	specializationEntries[13].constantID = 13;
+	specializationEntries[13].offset = offsetof(struct specConst, pR);
+	specializationEntries[13].size = sizeof(float);
+	specializationEntries[14].constantID = 14;
+	specializationEntries[14].offset = offsetof(struct specConst, pG);
+	specializationEntries[14].size = sizeof(float);
+	specializationEntries[15].constantID = 15;
+	specializationEntries[15].offset = offsetof(struct specConst, pB);
+	specializationEntries[15].size = sizeof(float);
 
 	VkSpecializationInfo specializationInfo;
-	specializationInfo.mapEntryCount = 5;
+	specializationInfo.mapEntryCount = 16;
 	specializationInfo.pMapEntries = specializationEntries;
 	specializationInfo.dataSize = sizeof(struct specConst);
 	specializationInfo.pData = &spec;
@@ -1136,6 +1166,15 @@ void createGraphicsPipeline() {
 	vkUpdateDescriptorSets(dev, 1, &writeDescriptor, 0, NULL);
 	imgInfo.imageView = frontImgView;
 	writeDescriptor.dstSet = graphicsFront;
+	vkUpdateDescriptorSets(dev, 1, &writeDescriptor, 0, NULL);
+
+	writeDescriptor.dstBinding = 1;
+	writeDescriptor.descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+	imgInfo.imageView = backImgView;
+	writeDescriptor.dstSet = graphicsFront;
+	vkUpdateDescriptorSets(dev, 1, &writeDescriptor, 0, NULL);
+	imgInfo.imageView = frontImgView;
+	writeDescriptor.dstSet = graphicsBack;
 	vkUpdateDescriptorSets(dev, 1, &writeDescriptor, 0, NULL);
 
 
