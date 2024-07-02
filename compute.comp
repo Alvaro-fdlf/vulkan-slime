@@ -26,6 +26,26 @@ layout (set = 0, binding = 2, rgba8) uniform readonly image2D frontImg;
 #define M_PI 3.14159265
 #define p (particles.p[particleIndex])
 
+//internal RNG state
+uvec4 s0, s1;
+
+// RNG from https://www.shadertoy.com/view/wltcRS
+void rng_initialize(vec4 init) {
+	s0 = uvec4(init);
+}
+
+// https://www.pcg-random.org/
+void pcg4d(inout uvec4 v) {
+	v = v * 1664525u + 1013904223u;
+	v.x += v.y*v.w; v.y += v.z*v.x; v.z += v.x*v.y; v.w += v.y*v.z;
+	v = v ^ (v>>16u);
+	v.x += v.y*v.w; v.y += v.z*v.x; v.z += v.x*v.y; v.w += v.y*v.z;
+}
+
+float rand() {
+	pcg4d(s0); return float(s0.x)/float(0xffffffffu);
+}
+
 void main(void) {
 	uvec3 numInstancesInGlobal = uvec3(4,4,8) * gl_NumWorkGroups;
 	uint particleIndex =
@@ -61,7 +81,8 @@ void main(void) {
 	}
 
 	// Change direction randomly a bit
-	// TODO
+	rng_initialize(vec4(vkRandSeed, particleIndex, p.angle*1234.5678, p.posX*p.posY));
+	p.angle += (rand() * 2 - 1) * maxRand;
 	p.dirX = particleSpeed * cos(p.angle);
 	p.dirY = particleSpeed * sin(p.angle);
 
