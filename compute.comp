@@ -20,7 +20,7 @@ struct particleData {
 layout (set = 0, binding = 0) buffer Particles {
 	particleData[] p;
 } particles;
-layout (set = 0, binding = 1, rgba8) uniform writeonly image2D backImg;
+layout (set = 0, binding = 1, rgba8) uniform image2D backImg;
 layout (set = 0, binding = 2, rgba8) uniform readonly image2D frontImg;
 
 #define M_PI 3.14159265
@@ -90,9 +90,10 @@ void main(void) {
 
 	// For some reason it acts as bgra instead of rgba
 	// might be a problem with the transfer from backImg to swapchain
-	vec4 pixel = {0.5, 0.5, 0.5, 0.5}; // alpha being 0.5 identifies a particle to the fragment shader
 	ivec2 pos;
 	pos.x = int(round(p.posX));
 	pos.y = int(round(p.posY));
+	vec4 pixel = imageLoad(backImg, pos);
+	pixel.a = 0.5; // alpha being 0.5 identifies a particle to the fragment shader
 	imageStore(backImg, pos, pixel);
 }

@@ -28,6 +28,29 @@ void main(void) {
 		colorOut = vec4(particleB, particleG, particleR, 1.0);
 	}
 	else {
-		colorOut = imageLoad(frontImg, ivec2(gl_FragCoord.xy));
+		// Blur
+		vec4 ul = imageLoad(frontImg, ivec2(gl_FragCoord.x-1, gl_FragCoord.y-1));
+		vec4 uc = imageLoad(frontImg, ivec2(gl_FragCoord.x,   gl_FragCoord.y-1));
+		vec4 ur = imageLoad(frontImg, ivec2(gl_FragCoord.x+1, gl_FragCoord.y-1));
+		vec4 cl = imageLoad(frontImg, ivec2(gl_FragCoord.x-1, gl_FragCoord.y  ));
+		vec4 cc = imageLoad(frontImg, ivec2(gl_FragCoord.x,   gl_FragCoord.y  ));
+		vec4 cr = imageLoad(frontImg, ivec2(gl_FragCoord.x+1, gl_FragCoord.y  ));
+		vec4 dl = imageLoad(frontImg, ivec2(gl_FragCoord.x-1, gl_FragCoord.y+1));
+		vec4 dc = imageLoad(frontImg, ivec2(gl_FragCoord.x,   gl_FragCoord.y+1));
+		vec4 dr = imageLoad(frontImg, ivec2(gl_FragCoord.x+1, gl_FragCoord.y+1));
+		vec4 outPixel = ul*blur1 + uc*blur2 + ur*blur3 +
+				cl*blur4 + cc*blur5 + cr*blur6 +
+				dl*blur7 + dc*blur8 + dr*blur9;
+
+		outPixel /= blurDivide;
+		//outPixel = clamp(outPixel, vec4(0.0, 0.0, 0.0, 1.0), vec4(particleB, particleG, particleR, 1.0));
+
+		// Fade
+		outPixel.r -= redFade;
+		outPixel.g -= greenFade;
+		outPixel.b -= blueFade;
+
+		outPixel.a = 1.0;
+		colorOut = outPixel;
 	}
 }
